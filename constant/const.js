@@ -12,5 +12,11 @@ export const dailyPrompt = [
     "What is one thing you can let go of to make more space for positivity?",
     "What is a recent challenge you faced and how did you overcome it?",
     "What are you looking forward to in the coming days?",
-    "What is one thing you want to achieve by the end of the week?"
+    "What is one thing you want to achieve by the end of the week?",
+    "Describe a moment when you felt truly connected to someone else.",
+    "What is a challenge you are currently facing and how can you overcome it?",
+    "What is one thing you can do today to make someone else's day better?",
+    "Reflect on a time when you felt proud of yourself.",
+    "What is one habit you want to develop for a healthier lifestyle?",
+    "Describe a moment when you felt inspired and motivated."
 ]

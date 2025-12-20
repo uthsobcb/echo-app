@@ -1,4 +1,6 @@
+import EntryCard from "@/component/EntryCard";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,8 +31,8 @@ export default function Home() {
           </View>
 
           <View className="flex-row items-center gap-3">
-            <TouchableOpacity className="bg-gray-100 p-2 rounded-full">
-              <Ionicons name="notifications" size={24} color="#374151" />
+            <TouchableOpacity className="bg-gray-100 p-2 rounded-full" onPress={() => { router.push('/(chat)') }}>
+              <Ionicons name="chatbox" color="#374151" size={24} />
             </TouchableOpacity>
             <Image source={require('../../assets/images/avatar.png')} className="h-14 w-14 rounded-full border-2 border-blue-400" />
           </View>
@@ -86,12 +88,74 @@ export default function Home() {
             <View className="flex-1 bg-blue-400/10 p-5 rounded-2xl" style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 }}>
               <AntDesign name="check-circle" color="green" size={25} />
               <Text className="text-blue-600 text-xs font-semibold mb-2">Tasks</Text>
-              <Text className="text-3xl font-bold text-gray-900">5</Text>
+              <Text className="text-3xl font-bold text-gray-900">3</Text>
               <Text className="text-gray-500 text-xs mt-2">To-Do</Text>
             </View>
           </View>
-        </View>
 
+          <View className="p-4 rounded-2xl bg-blue-50/60 mt-6 border border-blue-400/20" style={{ shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 3 }}>
+            <View className="flex-row items-center gap-4">
+              <Image source={require('../../assets/images/frustated-echo.webp')} className="h-14 w-14 rounded-md" accessibilityLabel="Echo avatar" />
+              <View className="flex-1">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-gray-900 text-lg font-semibold">Echo Says...</Text>
+                  <View className="px-2 py-1 rounded-full bg-blue-100 border border-blue-200">
+                    <Text className="text-sm text-blue-700">Mood: Gloomy 😔</Text>
+                  </View>
+                </View>
+
+                <Text className="text-gray-500 text-sm mt-1 max-w-[260px]">
+                  It seems you've been feeling a bit low this week. Would you like to talk Echo, or try a quick breathing exercise?
+                </Text>
+
+                <View className="mt-4 flex-row items-center gap-3">
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Talk to Echo"
+                    className="flex-row items-center rounded-xl bg-blue-500 px-4 py-2"
+                    onPress={() => router.push('/(chat)')}
+                  >
+                    <Text className="text-white text-lg">✋</Text>
+                    <Text className="ml-3 text-white font-semibold">Talk</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Try a breathing exercise"
+                    className="flex-row items-center rounded-xl bg-white px-4 py-2 border border-blue-200"
+                    onPress={() => console.log('Breathe pressed')}
+                  >
+                    <Text className="text-blue-600 text-lg">🧘</Text>
+                    <Text className="ml-3 text-blue-600 font-semibold">Breathe</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View className="mt-3">
+                  <Text className="text-xs text-gray-500 mb-1">Mood score</Text>
+                  <View className="w-full h-2 rounded-full bg-blue-100 overflow-hidden">
+                    <View className="h-2 rounded-full" style={{ width: '10%', backgroundColor: '#60A5FA' }} />
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <View className="mt-8 ">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-gray-900 text-lg font-bold">
+                Last Entry
+              </Text>
+
+              <TouchableOpacity onPress={() => router.push("/(tabs)/journal")}>
+                <Text className="text-blue-600 font-semibold text-sm">
+                  All Entries →
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <EntryCard />
+
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
