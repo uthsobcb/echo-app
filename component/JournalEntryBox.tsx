@@ -1,9 +1,21 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons'
+import React, { useEffect, useMemo, useState } from 'react'
+import {
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
+} from 'react-native'
 
 interface JournalEntryBoxProps {
-    onSubmit?: (entry: { title: string; content: string; image?: string; voice?: string }) => void
+    onSubmit?: (entry: {
+        title: string
+        content: string
+        image?: string
+        voice?: string
+    }) => void
     onGetPrompt?: () => void
     onVoiceRecord?: () => void
     onAttachImage?: () => void
@@ -19,25 +31,32 @@ export default function JournalEntryBox({
     onScanHandwriting,
     placeholder = "What's on your mind today?",
 }: JournalEntryBoxProps) {
-    const [title, setTitle] = useState('')
     const [content, setContent] = useState('')
     const [attachedImage, setAttachedImage] = useState<string | null>(null)
     const [voiceRecorded, setVoiceRecorded] = useState<boolean>(false)
+    const [isSaved, setIsSaved] = useState(false)
+    const [focusedInput, setFocusedInput] = useState<boolean>(false)
+
+    useEffect(() => {
+        if (content) {
+            const timer = setTimeout(() => {
+                setIsSaved(true)
+                setTimeout(() => setIsSaved(false), 1800)
+            }, 900)
+            return () => clearTimeout(timer)
+        }
+    }, [content])
 
     const handleSubmit = () => {
-        if (!title.trim() || !content.trim()) {
-            return
-        }
+        if (!content.trim()) return
 
         onSubmit?.({
-            title: title.trim(),
+            title: 'Entry',
             content: content.trim(),
             image: attachedImage || undefined,
             voice: voiceRecorded ? 'recorded' : undefined,
         })
 
-        // Reset form
-        setTitle('')
         setContent('')
         setAttachedImage(null)
         setVoiceRecorded(false)
@@ -53,115 +72,217 @@ export default function JournalEntryBox({
         setAttachedImage('image-attached')
     }
 
-    const isComplete = title.trim() && content.trim()
+    const isComplete = !!content.trim()
+
+    const { wordCount, readingTime } = useMemo(() => {
+        const trimmed = content.trim()
+        const wc = trimmed ? trimmed.split(/\s+/).filter(Boolean).length : 0
+        return { wordCount: wc, readingTime: wc ? Math.max(1, Math.ceil(wc / 200)) : 0 }
+    }, [content])
 
     return (
-        <View className="bg-white rounded-2xl p-5 mb-4" style={{
-            shadowColor: "#000",
-            shadowOpacity: 0.06,
-            shadowRadius: 10,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 3,
-        }}>
-            {/* Title Input */}
-            <TextInput
-                className="text-lg font-bold text-gray-900 mb-3"
-                placeholder="Entry title"
-                placeholderTextColor="#D1D5DB"
-                value={title}
-                onChangeText={setTitle}
-                maxLength={100}
-            />
-
-            {/* Content Input */}
-            <TextInput
-                className="text-sm text-gray-700 mb-4 leading-5"
-                placeholder={placeholder}
-                placeholderTextColor="#9CA3AF"
-                value={content}
-                onChangeText={setContent}
-                multiline
-                numberOfLines={5}
-                textAlignVertical="top"
-                maxLength={1000}
-            />
-
-            {/* Character Count */}
-            <Text className="text-xs text-gray-400 mb-4 text-right">
-                {content.length}/1000
-            </Text>
-
-            {/* Feature Buttons */}
-            <View className="flex-row gap-2 mb-4">
-                {/* Get Prompt Button */}
-                <Pressable
-                    onPress={onGetPrompt}
-                    className="flex-1 flex-row items-center justify-center bg-blue-100 py-3 rounded-xl gap-2"
+        <SafeAreaView className="flex-1">
+            <View className="px-4">
+                <View
+                    className="bg-white rounded-[28px] overflow-hidden mb-4"
+                    style={{
+                        shadowColor: '#0F172A',
+                        shadowOpacity: 0.12,
+                        shadowRadius: 30,
+                        shadowOffset: { width: 0, height: 14 },
+                        elevation: 8,
+                    }}
                 >
-                    <MaterialIcons name="lightbulb" size={18} color="#1E40AF" />
-                    <Text className="text-xs font-semibold text-blue-900">Prompt</Text>
-                </Pressable>
+                    {/* Top accent */}
+                    <View className="h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
 
-                {/* Attach Image Button */}
-                <Pressable
-                    onPress={handleAttachImage}
-                    className={`flex-1 flex-row items-center justify-center py-3 rounded-xl gap-2 ${attachedImage ? 'bg-green-100' : 'bg-gray-100'
-                        }`}
-                >
-                    <MaterialIcons
-                        name="image"
-                        size={18}
-                        color={attachedImage ? '#166534' : '#6B7280'}
-                    />
-                    <Text
-                        className={`text-xs font-semibold ${attachedImage ? 'text-green-900' : 'text-gray-700'
-                            }`}
-                    >
-                        Image
-                    </Text>
-                </Pressable>
+                    {/* Main */}
+                    <View className="p-7">
+                        {/* Saved chip (no layout jump) */}
+                        <View className="h-9 mb-4 justify-center">
+                            <View
+                                className={`self-start flex-row items-center px-3.5 py-2 rounded-full gap-2 ${isSaved ? 'bg-emerald-50' : 'bg-transparent'
+                                    }`}
+                                style={{ opacity: isSaved ? 1 : 0 }}
+                            >
+                                <MaterialIcons name="check-circle" size={16} color="#10B981" />
+                                <Text className="text-xs text-emerald-700 font-bold">Saved</Text>
+                            </View>
+                        </View>
 
-                {/* Voice Record Button */}
-                <Pressable
-                    onPress={handleVoiceRecord}
-                    className={`flex-1 flex-row items-center justify-center py-3 rounded-xl gap-2 ${voiceRecorded ? 'bg-red-100' : 'bg-gray-100'
-                        }`}
-                >
-                    <MaterialIcons
-                        name="mic"
-                        size={18}
-                        color={voiceRecorded ? '#991B1B' : '#6B7280'}
-                    />
-                    <Text
-                        className={`text-xs font-semibold ${voiceRecorded ? 'text-red-900' : 'text-gray-700'
-                            }`}
-                    >
-                        Voice
-                    </Text>
-                </Pressable>
+                        {/* Input (bigger + cleaner) */}
+                        <View
+                            className={`rounded-3xl px-5 py-5 mb-5 ${focusedInput ? 'bg-blue-50' : 'bg-slate-50'
+                                }`}
+                            style={{
+                                borderWidth: 1,
+                                borderColor: focusedInput
+                                    ? 'rgba(59,130,246,0.30)'
+                                    : 'rgba(148,163,184,0.30)',
+                            }}
+                        >
+                            <TextInput
+                                className="text-[17px] text-slate-900 leading-8"
+                                style={{
+                                    minHeight: 280, // 🔑 THIS is what actually increases size
+                                }}
+                                placeholder={placeholder}
+                                placeholderTextColor="#94A3B8"
+                                value={content}
+                                onChangeText={setContent}
+                                onFocus={() => setFocusedInput(true)}
+                                onBlur={() => setFocusedInput(false)}
+                                multiline
+                                textAlignVertical="top"
+                                maxLength={1000}
+                            />
+                        </View>
 
-                {/* Scan Handwriting Button */}
-                <Pressable
-                    onPress={onScanHandwriting}
-                    className="flex-1 flex-row items-center justify-center bg-purple-100 py-3 rounded-xl gap-2"
-                >
-                    <MaterialIcons name="draw" size={18} color="#5B21B6" />
-                    <Text className="text-xs font-semibold text-purple-900">Scan</Text>
-                </Pressable>
+
+                        {/* Stats */}
+                        <View className="flex-row items-center justify-between mb-6 px-1">
+                            <Text className="text-xs text-slate-500 font-semibold">
+                                {content.length}/1000 • {wordCount} words
+                            </Text>
+
+                            {readingTime > 0 && (
+                                <View
+                                    className="flex-row items-center gap-1 px-3 py-1.5 rounded-full"
+                                    style={{
+                                        backgroundColor: 'rgba(2,132,199,0.10)',
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(2,132,199,0.18)',
+                                    }}
+                                >
+                                    <MaterialIcons name="schedule" size={14} color="#0284C7" />
+                                    <Text className="text-xs text-slate-700 font-bold">~{readingTime} min</Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Buttons */}
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            className="mb-5"
+                            contentContainerStyle={{ paddingRight: 8 }}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            <View className="flex-row gap-3">
+                                <Pressable onPress={onGetPrompt} className="rounded-2xl overflow-hidden">
+                                    {({ pressed }) => (
+                                        <View
+                                            className="flex-row items-center justify-center py-3.5 px-5 gap-2"
+                                            style={{
+                                                backgroundColor: 'rgba(37,99,235,0.10)',
+                                                borderWidth: 1,
+                                                borderColor: 'rgba(37,99,235,0.18)',
+                                                opacity: pressed ? 0.9 : 1,
+                                            }}
+                                        >
+                                            <MaterialIcons name="lightbulb" size={18} color="#1E40AF" />
+                                            <Text className="text-xs font-bold text-blue-900">Prompt</Text>
+                                        </View>
+                                    )}
+                                </Pressable>
+
+                                <Pressable onPress={handleAttachImage} className="rounded-2xl overflow-hidden">
+                                    {({ pressed }) => (
+                                        <View
+                                            className="flex-row items-center justify-center py-3.5 px-5 gap-2"
+                                            style={{
+                                                backgroundColor: attachedImage
+                                                    ? 'rgba(16,185,129,0.12)'
+                                                    : 'rgba(15,23,42,0.06)',
+                                                borderWidth: 1,
+                                                borderColor: attachedImage
+                                                    ? 'rgba(16,185,129,0.20)'
+                                                    : 'rgba(148,163,184,0.25)',
+                                                opacity: pressed ? 0.9 : 1,
+                                            }}
+                                        >
+                                            <MaterialIcons
+                                                name="image"
+                                                size={18}
+                                                color={attachedImage ? '#059669' : '#64748B'}
+                                            />
+                                            <Text
+                                                className={`text-xs font-bold ${attachedImage ? 'text-emerald-900' : 'text-slate-700'
+                                                    }`}
+                                            >
+                                                Image
+                                            </Text>
+                                        </View>
+                                    )}
+                                </Pressable>
+
+                                <Pressable onPress={handleVoiceRecord} className="rounded-2xl overflow-hidden">
+                                    {({ pressed }) => (
+                                        <View
+                                            className="flex-row items-center justify-center py-3.5 px-5 gap-2"
+                                            style={{
+                                                backgroundColor: voiceRecorded
+                                                    ? 'rgba(239,68,68,0.12)'
+                                                    : 'rgba(15,23,42,0.06)',
+                                                borderWidth: 1,
+                                                borderColor: voiceRecorded
+                                                    ? 'rgba(239,68,68,0.20)'
+                                                    : 'rgba(148,163,184,0.25)',
+                                                opacity: pressed ? 0.9 : 1,
+                                            }}
+                                        >
+                                            <MaterialIcons name="mic" size={18} color={voiceRecorded ? '#DC2626' : '#64748B'} />
+                                            <Text
+                                                className={`text-xs font-bold ${voiceRecorded ? 'text-red-900' : 'text-slate-700'
+                                                    }`}
+                                            >
+                                                Voice
+                                            </Text>
+                                        </View>
+                                    )}
+                                </Pressable>
+
+                                <Pressable onPress={onScanHandwriting} className="rounded-2xl overflow-hidden">
+                                    {({ pressed }) => (
+                                        <View
+                                            className="flex-row items-center justify-center py-3.5 px-5 gap-2"
+                                            style={{
+                                                backgroundColor: 'rgba(124,58,237,0.10)',
+                                                borderWidth: 1,
+                                                borderColor: 'rgba(124,58,237,0.18)',
+                                                opacity: pressed ? 0.9 : 1,
+                                            }}
+                                        >
+                                            <MaterialIcons name="draw" size={18} color="#7C3AED" />
+                                            <Text className="text-xs font-bold text-purple-900">Scan</Text>
+                                        </View>
+                                    )}
+                                </Pressable>
+                            </View>
+                        </ScrollView>
+
+                        {/* Submit */}
+                        <Pressable onPress={handleSubmit} disabled={!isComplete} className="rounded-2xl overflow-hidden">
+                            {({ pressed }) => (
+                                <View
+                                    className={`py-4.5 flex items-center justify-center flex-row gap-2 ${isComplete ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-slate-300'
+                                        }`}
+                                    style={{ opacity: pressed && isComplete ? 0.92 : 1 }}
+                                >
+                                    <MaterialIcons
+                                        name={isComplete ? 'check-circle' : 'edit'}
+                                        size={20}
+                                        color={isComplete ? '#FFFFFF' : '#94A3B8'}
+                                    />
+                                    <Text className={`font-bold text-base ${isComplete ? 'text-white' : 'text-slate-500'}`}>
+                                        Save Entry
+                                    </Text>
+                                </View>
+                            )}
+                        </Pressable>
+                    </View>
+                </View>
             </View>
-
-            {/* Submit Button */}
-            <Pressable
-                onPress={handleSubmit}
-                disabled={!isComplete}
-                className={`py-3 rounded-xl flex items-center justify-center ${isComplete ? 'bg-gray-900' : 'bg-gray-300'
-                    }`}
-            >
-                <Text className={`font-bold ${isComplete ? 'text-white' : 'text-gray-500'
-                    }`}>
-                    Save Entry
-                </Text>
-            </Pressable>
-        </View>
+        </SafeAreaView>
     )
 }
