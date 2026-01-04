@@ -21,13 +21,13 @@ export const ChatHistoryItem: React.FC<ChatHistoryItemProps> = ({
     const isToday = new Date().toDateString() === timestamp.toDateString()
     const timeString = isToday
         ? timestamp.toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-          })
+            hour: '2-digit',
+            minute: '2-digit',
+        })
         : timestamp.toLocaleDateString([], {
-              month: 'short',
-              day: 'numeric',
-          })
+            month: 'short',
+            day: 'numeric',
+        })
 
     return (
         <TouchableOpacity
