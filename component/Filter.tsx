@@ -9,7 +9,7 @@ const Filter = () => {
       <FlatList
         data={filters}
         renderItem={({ item }) =>
-          <Text className={`text-gray-700 font-semibold p-3 rounded-2xl ${selectedFilter === item ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} onPress={() => setSelectedFilter(item)}>
+          <Text className={`text-gray-700 font-semibold p-2 rounded-2xl ${selectedFilter === item ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} onPress={() => setSelectedFilter(item)}>
             {item}
           </Text>
         }
