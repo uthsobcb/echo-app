@@ -6,7 +6,10 @@ import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { dailyPrompt } from "./../../constant/const";
 
+import { useStorage } from "@/context/StorageContext";
+
 export default function Home() {
+  const { user, stats, entries } = useStorage();
   const [prompt, setPrompt] = useState("");
 
   useEffect(() => {
@@ -27,7 +30,7 @@ export default function Home() {
               })}
             </Text>
             <Text className="text-gray-700 text-lg font-semibold">Good Morning,</Text>
-            <Text className="text-2xl font-bold text-gray-900">Uthsob</Text>
+            <Text className="text-2xl font-bold text-gray-900">{user.name}</Text>
           </View>
 
           <View className="flex-row items-center gap-3">
@@ -59,7 +62,10 @@ export default function Home() {
                 {prompt}
               </Text>
 
-              <TouchableOpacity className="mt-6 self-start flex-row items-center rounded-2xl bg-blue-500 px-6 py-3">
+              <TouchableOpacity
+                className="mt-6 self-start flex-row items-center rounded-2xl bg-blue-500 px-6 py-3"
+                onPress={() => router.push('/(tabs)/create')}
+              >
                 <Text className="text-[18px] text-white">✎</Text>
                 <Text className="ml-3 text-[18px] font-semibold text-white">
                   Write Now
@@ -76,19 +82,19 @@ export default function Home() {
             <View className="flex-1 bg-blue-400/10 p-5 rounded-2xl" style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 }}>
               <AntDesign name="folder-open" color="purple" size={25} />
               <Text className="text-green-600 text-xs font-semibold mb-2">Entries</Text>
-              <Text className="text-3xl font-bold text-gray-900">12</Text>
+              <Text className="text-3xl font-bold text-gray-900">{stats.entries}</Text>
               <Text className="text-gray-500 text-xs mt-2">This month</Text>
             </View>
             <View className="flex-1 bg-blue-400/10 p-5 rounded-2xl" style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 }}>
               <AntDesign name="fire" color="orange" size={25} />
               <Text className="text-purple-600 text-xs font-semibold mb-2">Streak</Text>
-              <Text className="text-3xl font-bold text-gray-900">5</Text>
+              <Text className="text-3xl font-bold text-gray-900">{stats.streak}</Text>
               <Text className="text-gray-500 text-xs mt-2">Days</Text>
             </View>
             <View className="flex-1 bg-blue-400/10 p-5 rounded-2xl" style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 }}>
               <AntDesign name="check-circle" color="green" size={25} />
               <Text className="text-blue-600 text-xs font-semibold mb-2">Tasks</Text>
-              <Text className="text-3xl font-bold text-gray-900">3</Text>
+              <Text className="text-3xl font-bold text-gray-900">{stats.tasks}</Text>
               <Text className="text-gray-500 text-xs mt-2">To-Do</Text>
             </View>
           </View>
@@ -100,7 +106,7 @@ export default function Home() {
                 <View className="flex-row items-center justify-between">
                   <Text className="text-gray-900 text-lg font-semibold">Echo Says...</Text>
                   <View className="px-2 py-1 rounded-full bg-blue-100 border border-blue-200">
-                    <Text className="text-sm text-blue-700">Mood: Gloomy 😔</Text>
+                    <Text className="text-sm text-blue-700">Mood: {user.mood}</Text>
                   </View>
                 </View>
 
@@ -152,7 +158,7 @@ export default function Home() {
               </TouchableOpacity>
             </View>
 
-            <EntryCard />
+            <EntryCard entry={entries[0]} />
 
           </View>
         </View>

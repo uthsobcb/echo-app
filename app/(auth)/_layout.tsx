@@ -7,6 +7,7 @@ export default function AuthLayout() {
         <>
             <Stack>
                 <Stack.Screen name="signin" options={{ headerShown: false }} />
+                <Stack.Screen name="local-setup" options={{ headerShown: false }} />
             </Stack>
         </>
     )

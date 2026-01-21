@@ -291,6 +291,12 @@ export default function SignIn() {
 
                     {/* Privacy Notice */}
                     <View className="items-center border-t border-gray-100 pt-5">
+                        <TouchableOpacity onPress={() => {
+                            router.push('/(auth)/local-setup');
+                        }}>
+                            <Text className="text-blue-500 font-semibold mb-4">Continue as Local</Text>
+                        </TouchableOpacity>
+
                         <MaterialCommunityIcons name="shield-check" size={24} color="#4b91e2" />
                         <Text className="text-center text-xs leading-4.5 text-gray-600">
                             Your thoughts are private and encrypted.{'\n'}

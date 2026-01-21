@@ -35,7 +35,12 @@ function SettingItem({ icon, title, subtitle, rightElement, onPress, showArrow =
     );
 }
 
+import { useStorage } from '@/context/StorageContext';
+import { router } from 'expo-router';
+
 export default function Profile() {
+    const { user, logout } = useStorage();
+    const isLocal = user.isLocal;
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [darkModeEnabled, setDarkModeEnabled] = useState(false);
     const [reminderEnabled, setReminderEnabled] = useState(true);
@@ -50,6 +55,21 @@ export default function Profile() {
 
                 {/* Profile Card */}
                 <View className="mx-4 mb-6">
+                    {isLocal && (
+                        <View className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4 flex-row items-center">
+                            <Ionicons name="cloud-offline-outline" size={24} color="#3B82F6" />
+                            <View className="ml-3 flex-1">
+                                <Text className="text-blue-800 font-bold">Local Account</Text>
+                                <Text className="text-blue-600 text-xs">Your data is only saved on this device.</Text>
+                            </View>
+                            <TouchableOpacity
+                                className="bg-blue-500 px-3 py-1.5 rounded-lg"
+                                onPress={() => { logout(); router.replace('/(auth)/signin'); }}
+                            >
+                                <Text className="text-white text-xs font-bold">Sync</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                     <View
                         className="bg-white rounded-3xl p-6 items-center"
                         style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 }}
@@ -66,8 +86,8 @@ export default function Profile() {
                                 <Feather name="camera" size={14} color="white" />
                             </TouchableOpacity>
                         </View>
-                        <Text className="text-xl font-bold text-gray-900 mt-4">Uthsob</Text>
-                        <Text className="text-gray-500 text-sm mt-1">uthsob@example.com</Text>
+                        <Text className="text-xl font-bold text-gray-900 mt-4">{user.name}</Text>
+                        <Text className="text-gray-500 text-sm mt-1">{isLocal ? 'Local Storage' : 'uthsob@example.com'}</Text>
                         <View className="flex-row items-center mt-2">
                             <View className="bg-emerald-100 px-3 py-1 rounded-full">
                                 <Text className="text-emerald-600 text-xs font-semibold">Pro Member</Text>
@@ -205,6 +225,7 @@ export default function Profile() {
                     <TouchableOpacity
                         className="flex-row items-center justify-center py-4 bg-red-50 rounded-2xl"
                         activeOpacity={0.7}
+                        onPress={() => { logout(); router.replace('/(auth)/signin'); }}
                     >
                         <Ionicons name="log-out-outline" size={20} color="#EF4444" />
                         <Text className="text-red-500 font-semibold text-base ml-2">Log Out</Text>
