@@ -122,7 +122,7 @@ export default function Home() {
                     accessibilityRole="button"
                     accessibilityLabel="Try a breathing exercise"
                     className="flex-row items-center rounded-xl bg-white px-4 py-2 border border-blue-200"
-                    onPress={() => console.log('Breathe pressed')}
+                    onPress={() => router.push('/(meditation)')}
                   >
                     <Text className="text-blue-600 text-lg">🧘</Text>
                     <Text className="ml-3 text-blue-600 font-semibold">Breathe</Text>
