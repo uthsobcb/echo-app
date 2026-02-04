@@ -26,7 +26,8 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
         );
     }
 
-    const date = new Date(entry.date);
+    const id = entry._id || entry.id;
+    const date = new Date(entry.createdAt);
     const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const dateString = date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
 
@@ -41,7 +42,7 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            await deleteEntry(entry.id);
+                            if (id) await deleteEntry(id);
                         } catch (error) {
                             console.error("Failed to delete", error);
                         }
@@ -54,12 +55,11 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
     const handleEdit = () => {
         router.push({
             pathname: '/(tabs)/create',
-            params: { entryId: entry.id }
+            params: { entryId: id }
         });
     };
 
     return (
-
         <View
             className="mt-2 bg-white rounded-2xl p-5"
             style={{
@@ -71,14 +71,23 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
             }}
         >
             <View className="flex-row items-center justify-between">
-                <View>
+                <View className="flex-1">
                     <Text className="text-[11px] tracking-widest text-gray-400 font-semibold uppercase">
                         {dateString}, {timeString}
                     </Text>
-                    <View className="flex-row items-center bg-purple-100 px-2.5 py-0.5 rounded-full mt-1 self-start">
-                        <Text className="text-purple-700 text-[10px] font-semibold">
-                            {entry.mood}
-                        </Text>
+                    <View className="flex-row items-center mt-1 gap-2">
+                        <View className="bg-purple-100 px-2.5 py-0.5 rounded-full self-start">
+                            <Text className="text-purple-700 text-[10px] font-semibold">
+                                {entry.mood}
+                            </Text>
+                        </View>
+                        {entry.score && (
+                            <View className="bg-blue-100 px-2.5 py-0.5 rounded-full self-start">
+                                <Text className="text-blue-700 text-[10px] font-semibold">
+                                    Score: {entry.score}/10
+                                </Text>
+                            </View>
+                        )}
                     </View>
                 </View>
 
@@ -101,8 +110,15 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
             >
                 {typeof entry.content === 'string' ? entry.content : ''}
             </Text>
+            {entry.comment && (
+                <View className="mt-4 p-3 bg-blue-50/50 rounded-xl border border-blue-100/30">
+                    <Text className="text-blue-800 text-xs italic leading-4">
+                        <Ionicons name="sparkles" size={12} color="#1E3A8A" /> "{entry.comment}"
+                    </Text>
+                </View>
+            )}
         </View>
-    )
-}
+    );
+};
 
 export default EntryCard

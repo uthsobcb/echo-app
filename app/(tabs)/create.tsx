@@ -6,17 +6,18 @@ import { useStorage } from '@/context/StorageContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 export default function Create() {
-    const { addEntry, entries, updateEntry } = useStorage();
+    const { addEntry, entries, updateEntry, appMode } = useStorage();
     const router = useRouter();
     const { entryId } = useLocalSearchParams<{ entryId: string }>();
 
     const [showMoodModal, setShowMoodModal] = useState(false);
     const [pendingEntryContent, setPendingEntryContent] = useState<string>('');
     const [initialContent, setInitialContent] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (entryId) {
-            const entry = entries.find(e => e.id === entryId);
+            const entry = entries.find(e => (e.id === entryId || e._id === entryId));
             if (entry) {
                 setInitialContent(typeof entry.content === 'string' ? entry.content : '');
             }
@@ -25,11 +26,27 @@ export default function Create() {
 
     const moods = ['Happy 😊', 'Excited 🤩', 'Grateful 😇', 'Relaxed 😌', 'Neutral 😐', 'Tired 😴', 'Sad 😔', 'Anxious 😰', 'Angry 😠'];
 
-    const handleSubmit = (entry: any) => {
-        // Intercept submit to show mood modal
+    const handleSubmit = async (entry: any) => {
         const content = typeof entry === 'string' ? entry : entry.content;
-        setPendingEntryContent(content);
-        setShowMoodModal(true);
+
+        if (appMode === 'api') {
+            try {
+                setIsSaving(true);
+                if (entryId) {
+                    await updateEntry(entryId, { content });
+                } else {
+                    await addEntry({ content, mood: 'AI' }); // Mood is handled by backend
+                }
+                router.push('/(tabs)');
+            } catch (error) {
+                console.error("Failed to save entry:", error);
+            } finally {
+                setIsSaving(false);
+            }
+        } else {
+            setPendingEntryContent(content);
+            setShowMoodModal(true);
+        }
     };
 
     const handleSaveWithMood = async (mood: string) => {

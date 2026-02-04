@@ -39,8 +39,8 @@ import { useStorage } from '@/context/StorageContext';
 import { router } from 'expo-router';
 
 export default function Profile() {
-    const { user, logout } = useStorage();
-    const isLocal = user.isLocal;
+    const { user, logout, stats, appMode } = useStorage();
+    const isLocal = appMode === 'local';
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [darkModeEnabled, setDarkModeEnabled] = useState(false);
     const [reminderEnabled, setReminderEnabled] = useState(true);
@@ -76,7 +76,7 @@ export default function Profile() {
                     >
                         <View className="relative">
                             <Image
-                                source={require('../../assets/images/avatar.png')}
+                                source={user.image ? { uri: user.image } : (user.avatar ? { uri: user.avatar } : require('../../assets/images/avatar.png'))}
                                 className="h-24 w-24 rounded-full border-4 border-blue-100"
                             />
                             <TouchableOpacity
@@ -87,28 +87,43 @@ export default function Profile() {
                             </TouchableOpacity>
                         </View>
                         <Text className="text-xl font-bold text-gray-900 mt-4">{user.name}</Text>
-                        <Text className="text-gray-500 text-sm mt-1">{isLocal ? 'Local Storage' : 'uthsob@example.com'}</Text>
-                        <View className="flex-row items-center mt-2">
-                            <View className="bg-emerald-100 px-3 py-1 rounded-full">
-                                <Text className="text-emerald-600 text-xs font-semibold">Pro Member</Text>
+                        <Text className="text-gray-500 text-sm mt-1">{isLocal ? 'Offline Mode' : (user.email || 'Cloud Member')}</Text>
+
+                        {!isLocal && (
+                            <View className="flex-row items-center mt-2 gap-2">
+                                <View className={`px-3 py-1 rounded-full ${user.subscription === 'admin' ? 'bg-purple-100' : 'bg-emerald-100'}`}>
+                                    <Text className={`text-[10px] font-semibold uppercase ${user.subscription === 'admin' ? 'text-purple-600' : 'text-emerald-600'}`}>
+                                        {user.subscription || 'Free'} Member
+                                    </Text>
+                                </View>
                             </View>
-                        </View>
+                        )}
+
+                        {user.badge && user.badge.length > 0 && (
+                            <View className="flex-row flex-wrap justify-center mt-3 gap-2">
+                                {user.badge.map((badge, idx) => (
+                                    <View key={idx} className="bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                                        <Text className="text-amber-700 text-[10px] font-bold">🏅 {badge}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
 
                         {/* Stats Row */}
                         <View className="flex-row mt-6 pt-6 border-t border-gray-100 w-full">
                             <View className="flex-1 items-center">
-                                <Text className="text-2xl font-bold text-gray-900">47</Text>
+                                <Text className="text-2xl font-bold text-gray-900">{stats.entries}</Text>
                                 <Text className="text-gray-500 text-xs mt-1">Entries</Text>
                             </View>
                             <View className="w-px bg-gray-200" />
                             <View className="flex-1 items-center">
-                                <Text className="text-2xl font-bold text-gray-900">12</Text>
+                                <Text className="text-2xl font-bold text-gray-900">{stats.streak}</Text>
                                 <Text className="text-gray-500 text-xs mt-1">Day Streak</Text>
                             </View>
                             <View className="w-px bg-gray-200" />
                             <View className="flex-1 items-center">
-                                <Text className="text-2xl font-bold text-gray-900">3</Text>
-                                <Text className="text-gray-500 text-xs mt-1">Months</Text>
+                                <Text className="text-2xl font-bold text-gray-900">0</Text>
+                                <Text className="text-gray-500 text-xs mt-1">Awards</Text>
                             </View>
                         </View>
                     </View>

@@ -2,6 +2,7 @@ import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Animated,
     Image,
@@ -16,13 +17,17 @@ import {
 
 
 
+import { useStorage } from '../../context/StorageContext';
+
 export default function SignIn() {
     const router = useRouter();
+    const { loginAsAPI, registerAPI } = useStorage();
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(50)).current;
 
@@ -41,7 +46,7 @@ export default function SignIn() {
         ]).start();
     }, [isSignUp]);
 
-    const handleSignUp = () => {
+    const handleSignUp = async () => {
         if (!email || !password || !name) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
@@ -51,12 +56,38 @@ export default function SignIn() {
             Alert.alert('Error', 'Password must be at least 6 characters');
             return;
         }
+
+        try {
+            setLoading(true);
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('email', email.toLowerCase());
+            formData.append('password', password);
+
+            await registerAPI(formData);
+            Alert.alert('Success', 'Registered successfully! Please login.');
+            setIsSignUp(true);
+        } catch (error: any) {
+            Alert.alert('Registration Failed', error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         if (!email || !password) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
+        }
+
+        try {
+            setLoading(true);
+            await loginAsAPI({ email: email.toLowerCase(), password });
+            router.replace('/(tabs)');
+        } catch (error: any) {
+            Alert.alert('Login Failed', error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -193,16 +224,23 @@ export default function SignIn() {
                             <TouchableOpacity
                                 className="mb-5 flex-row items-center justify-center rounded-3xl h-14 bg-blue-500"
                                 onPress={handleSignUp}
+                                disabled={loading}
                                 activeOpacity={0.8}
                                 style={{ shadowColor: '#4b91e2', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 }}
                             >
-                                <Text className="text-base font-bold text-white">Enter Echo</Text>
-                                <MaterialCommunityIcons
-                                    name="arrow-right"
-                                    size={20}
-                                    color="white"
-                                    style={{ marginLeft: 10 }}
-                                />
+                                {loading ? (
+                                    <ActivityIndicator color="white" />
+                                ) : (
+                                    <>
+                                        <Text className="text-base font-bold text-white">Enter Echo</Text>
+                                        <MaterialCommunityIcons
+                                            name="arrow-right"
+                                            size={20}
+                                            color="white"
+                                            style={{ marginLeft: 10 }}
+                                        />
+                                    </>
+                                )}
                             </TouchableOpacity>
                         </>
                     ) : (
@@ -256,16 +294,23 @@ export default function SignIn() {
                             <TouchableOpacity
                                 className="mb-5 flex-row items-center justify-center rounded-3xl h-14 bg-blue-500"
                                 onPress={handleLogin}
+                                disabled={loading}
                                 activeOpacity={0.8}
                                 style={{ shadowColor: '#4b91e2', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 }}
                             >
-                                <Text className="text-base font-bold text-white">Continue</Text>
-                                <MaterialCommunityIcons
-                                    name="arrow-right"
-                                    size={20}
-                                    color="white"
-                                    style={{ marginLeft: 10 }}
-                                />
+                                {loading ? (
+                                    <ActivityIndicator color="white" />
+                                ) : (
+                                    <>
+                                        <Text className="text-base font-bold text-white">Continue</Text>
+                                        <MaterialCommunityIcons
+                                            name="arrow-right"
+                                            size={20}
+                                            color="white"
+                                            style={{ marginLeft: 10 }}
+                                        />
+                                    </>
+                                )}
                             </TouchableOpacity>
 
                             <TouchableOpacity className="items-center mb-6">

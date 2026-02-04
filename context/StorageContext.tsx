@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { api } from '../service/api';
 import { Entry, Stats, User } from '../types/data';
+
+type AppMode = 'local' | 'api';
 
 interface StorageContextType {
     user: User;
@@ -8,13 +11,17 @@ interface StorageContextType {
     stats: Stats;
     isLoading: boolean;
     isAuthenticated: boolean;
+    appMode: AppMode;
     loginAsLocal: (userData?: Partial<User>) => Promise<void>;
+    loginAsAPI: (credentials: { email: string; password: any }) => Promise<void>;
+    registerAPI: (formData: FormData) => Promise<void>;
     logout: () => Promise<void>;
     addEntry: (entry: Omit<Entry, 'id' | 'createdAt'>) => Promise<void>;
     deleteEntry: (id: string) => Promise<void>;
     updateEntry: (id: string, updates: Partial<Entry>) => Promise<void>;
     updateUser: (user: Partial<User>) => Promise<void>;
     resetData: () => Promise<void>;
+    toggleMode: (mode: AppMode) => Promise<void>;
 }
 
 const defaultUser: User = {
@@ -37,38 +44,67 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [stats, setStats] = useState<Stats>(defaultStats);
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [appMode, setAppMode] = useState<AppMode>('local');
 
     useEffect(() => {
-        loadData();
+        init();
     }, []);
 
-    const loadData = async () => {
+    const init = async () => {
         try {
-            const storedUser = await AsyncStorage.getItem('user');
-            const storedEntries = await AsyncStorage.getItem('entries');
-            const storedStats = await AsyncStorage.getItem('stats');
-            const storedAuth = await AsyncStorage.getItem('isAuthenticated');
-
-            if (storedAuth === 'true') {
-                setIsAuthenticated(true);
-            }
-
-            if (storedUser) setUser(JSON.parse(storedUser));
-            if (storedEntries) {
-                const parsedEntries = JSON.parse(storedEntries);
-                setEntries(parsedEntries);
-                // Recalculate basic stats on load if needed, or trust stored stats
-                // holding off on complex stats logic for now
-            }
-            if (storedStats) setStats(JSON.parse(storedStats));
+            const storedMode = await AsyncStorage.getItem('appMode') as AppMode;
+            const mode = storedMode || 'local';
+            setAppMode(mode);
+            await loadData(mode);
         } catch (error) {
-            console.error('Failed to load data', error);
+            console.error('Failed to initialize', error);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const saveData = async (key: string, value: any) => {
+    const loadData = async (mode: AppMode) => {
+        try {
+            if (mode === 'api') {
+                const token = await AsyncStorage.getItem('token');
+                if (token) {
+                    setIsAuthenticated(true);
+                    const profileData = await api.profile.get();
+                    setUser({ ...profileData.user, isLocal: false });
+
+                    const entriesData = await api.entries.getAll();
+                    setEntries(entriesData);
+
+                    // Map backend data to local stats structure if needed
+                    setStats({
+                        entries: entriesData.length,
+                        streak: 0, // Backend doesn't explicitly provide streak in /entries
+                        tasks: 0
+                    });
+                } else {
+                    setAppMode('local');
+                    await loadData('local');
+                }
+            } else {
+                const storedUser = await AsyncStorage.getItem('user');
+                const storedEntries = await AsyncStorage.getItem('entries');
+                const storedStats = await AsyncStorage.getItem('stats');
+                const storedAuth = await AsyncStorage.getItem('isAuthenticated');
+
+                if (storedAuth === 'true') {
+                    setIsAuthenticated(true);
+                }
+
+                if (storedUser) setUser(JSON.parse(storedUser));
+                if (storedEntries) setEntries(JSON.parse(storedEntries));
+                if (storedStats) setStats(JSON.parse(storedStats));
+            }
+        } catch (error) {
+            console.error('Failed to load data', error);
+        }
+    };
+
+    const saveDataLocal = async (key: string, value: any) => {
         try {
             await AsyncStorage.setItem(key, JSON.stringify(value));
         } catch (error) {
@@ -77,44 +113,74 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const addEntry = async (newEntryData: Omit<Entry, 'id' | 'createdAt'>) => {
-        const newEntry: Entry = {
-            ...newEntryData,
-            id: Date.now().toString(),
-            createdAt: Date.now(),
-        };
+        if (appMode === 'api') {
+            const result = await api.mood.create(newEntryData.content, newEntryData.imgUrl);
+            setEntries([result, ...entries]);
+            setStats(prev => ({ ...prev, entries: prev.entries + 1 }));
+        } else {
+            const newEntry: Entry = {
+                ...newEntryData,
+                id: Date.now().toString(),
+                createdAt: Date.now(),
+            };
+            const updatedEntries = [newEntry, ...entries];
+            setEntries(updatedEntries);
+            await saveDataLocal('entries', updatedEntries);
 
-        const updatedEntries = [newEntry, ...entries];
-        setEntries(updatedEntries);
-        await saveData('entries', updatedEntries);
-
-        // Update stats
-        const updatedStats = {
-            ...stats,
-            entries: stats.entries + 1,
-            // Simple streak logic: if last entry was yesterday or today
-            // For now just increment entries
-        };
-        setStats(updatedStats);
-        await saveData('stats', updatedStats);
+            const updatedStats = {
+                ...stats,
+                entries: stats.entries + 1,
+            };
+            setStats(updatedStats);
+            await saveDataLocal('stats', updatedStats);
+        }
     };
 
     const updateUser = async (updatedUser: Partial<User>) => {
-        const newUser = { ...user, ...updatedUser };
-        setUser(newUser);
-        await saveData('user', newUser);
+        if (appMode === 'api') {
+            const result = await api.profile.update(updatedUser);
+            setUser({ ...user, ...result.user });
+        } else {
+            const newUser = { ...user, ...updatedUser };
+            setUser(newUser);
+            await saveDataLocal('user', newUser);
+        }
     };
 
     const loginAsLocal = async (userData?: Partial<User>) => {
+        setAppMode('local');
         setIsAuthenticated(true);
+        await AsyncStorage.setItem('appMode', 'local');
         await AsyncStorage.setItem('isAuthenticated', 'true');
         const localUser = { ...defaultUser, ...userData, isLocal: true };
         setUser(localUser);
-        await saveData('user', localUser);
+        await saveDataLocal('user', localUser);
+    };
+
+    const loginAsAPI = async (credentials: { email: string; password: any }) => {
+        const result = await api.auth.login(credentials);
+        if (result.token) {
+            await AsyncStorage.setItem('token', result.token);
+            setAppMode('api');
+            setIsAuthenticated(true);
+            await AsyncStorage.setItem('appMode', 'api');
+            await loadData('api');
+        }
+    };
+
+    const registerAPI = async (formData: FormData) => {
+        await api.auth.register(formData);
     };
 
     const logout = async () => {
         setIsAuthenticated(false);
         await AsyncStorage.removeItem('isAuthenticated');
+        await AsyncStorage.removeItem('token');
+        setAppMode('local');
+        await AsyncStorage.setItem('appMode', 'local');
+        setUser(defaultUser);
+        setEntries([]);
+        setStats(defaultStats);
     };
 
     const resetData = async () => {
@@ -123,31 +189,49 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setUser(defaultUser);
             setEntries([]);
             setStats(defaultStats);
+            setAppMode('local');
+            setIsAuthenticated(false);
         } catch (e) {
             console.error(e);
         }
     };
 
     const deleteEntry = async (id: string) => {
-        const updatedEntries = entries.filter(e => e.id !== id);
-        setEntries(updatedEntries);
-        await saveData('entries', updatedEntries);
+        if (appMode === 'api') {
+            await api.entries.delete(id);
+            setEntries(entries.filter(e => e._id !== id));
+            setStats(prev => ({ ...prev, entries: Math.max(0, prev.entries - 1) }));
+        } else {
+            const updatedEntries = entries.filter(e => e.id !== id);
+            setEntries(updatedEntries);
+            await saveDataLocal('entries', updatedEntries);
 
-        // Update stats
-        const updatedStats = {
-            ...stats,
-            entries: Math.max(0, stats.entries - 1),
-        };
-        setStats(updatedStats);
-        await saveData('stats', updatedStats);
+            const updatedStats = {
+                ...stats,
+                entries: Math.max(0, stats.entries - 1),
+            };
+            setStats(updatedStats);
+            await saveDataLocal('stats', updatedStats);
+        }
     };
 
     const updateEntry = async (id: string, updates: Partial<Entry>) => {
-        const updatedEntries = entries.map(e =>
-            e.id === id ? { ...e, ...updates } : e
-        );
-        setEntries(updatedEntries);
-        await saveData('entries', updatedEntries);
+        if (appMode === 'api') {
+            const result = await api.entries.update(id, updates);
+            setEntries(entries.map(e => (e._id === id ? result : e)));
+        } else {
+            const updatedEntries = entries.map(e =>
+                e.id === id ? { ...e, ...updates } : e
+            );
+            setEntries(updatedEntries);
+            await saveDataLocal('entries', updatedEntries);
+        }
+    };
+
+    const toggleMode = async (mode: AppMode) => {
+        setAppMode(mode);
+        await AsyncStorage.setItem('appMode', mode);
+        await loadData(mode);
     };
 
     return (
@@ -158,13 +242,17 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 stats,
                 isLoading,
                 isAuthenticated,
+                appMode,
                 loginAsLocal,
+                loginAsAPI,
+                registerAPI,
                 logout,
                 addEntry,
                 deleteEntry,
                 updateEntry,
                 updateUser,
                 resetData,
+                toggleMode,
             }}
         >
             {children}
