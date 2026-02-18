@@ -17,11 +17,15 @@ import {
 
 
 
+import { useAuthRequest } from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { useStorage } from '../../context/StorageContext';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignIn() {
     const router = useRouter();
-    const { loginAsAPI, registerAPI } = useStorage();
+    const { loginAsAPI, registerAPI, loginWithGoogle } = useStorage();
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -30,6 +34,32 @@ export default function SignIn() {
     const [loading, setLoading] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(50)).current;
+
+    const [request, response, promptAsync] = useAuthRequest({
+        // Please replace with your actual client IDs
+        iosClientId: 'YOUR_IOS_CLIENT_ID',
+        androidClientId: 'YOUR_ANDROID_CLIENT_ID',
+        webClientId: 'YOUR_WEB_CLIENT_ID',
+    });
+
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const { id_token } = response.params;
+            handleGoogleLogin(id_token);
+        }
+    }, [response]);
+
+    const handleGoogleLogin = async (token: string) => {
+        try {
+            setLoading(true);
+            await loginWithGoogle(token);
+            router.replace('/(tabs)');
+        } catch (error: any) {
+            Alert.alert('Google Login Failed', error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         Animated.parallel([
@@ -323,7 +353,11 @@ export default function SignIn() {
                     <View className="mb-6">
                         <Text className="mb-3 text-center text-xs font-semibold tracking-wider text-gray-600">OR CONTINUE WITH</Text>
                         <View className="flex-row gap-3">
-                            <TouchableOpacity className="flex-1 flex-row items-center justify-center h-12 rounded-2xl border border-gray-200 gap-2">
+                            <TouchableOpacity
+                                className="flex-1 flex-row items-center justify-center h-12 rounded-2xl border border-gray-200 gap-2"
+                                onPress={() => promptAsync()}
+                                disabled={!request || loading}
+                            >
                                 <FontAwesome5 name="google" size={18} color="#EA4335" />
                                 <Text className="text-sm font-semibold text-gray-950">Google</Text>
                             </TouchableOpacity>

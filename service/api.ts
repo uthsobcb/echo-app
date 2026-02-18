@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthResponse, Chat, Entry, SpaceDrawStatus, User } from '../types/data';
 
 const BASE_URL = 'https://my-echo.space/api';
 
@@ -22,6 +23,7 @@ async function getHeaders(isMultipart = false) {
 const handleResponse = async (response: Response) => {
     const data = await response.json();
     if (!response.ok) {
+        console.error('API Error:', data);
         throw new Error(data.message || data.error || 'Something went wrong');
     }
     return data;
@@ -30,17 +32,26 @@ const handleResponse = async (response: Response) => {
 export const api = {
     // Auth
     auth: {
-        login: async (credentials: any) => {
-            const response = await fetch(`${BASE_URL}/auth/login`, {
-                method: 'POST',
-                headers: await getHeaders(),
-                body: JSON.stringify(credentials),
-            });
-            const data = await handleResponse(response);
-            if (data.token) {
-                await AsyncStorage.setItem('token', data.token);
+        login: async (credentials: { email: string; password: string }) => {
+            console.log('API: Logging in...');
+            try {
+                const response = await fetch(`${BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: await getHeaders(),
+                    body: JSON.stringify(credentials),
+                });
+                console.log('API: Login Response status:', response.status);
+                const data = await handleResponse(response);
+                if (data.token) {
+                    await AsyncStorage.setItem('token', data.token);
+                } else {
+                    console.warn('API: No token in login response');
+                }
+                return data as AuthResponse;
+            } catch (e) {
+                console.error('API: Login failed', e);
+                throw e;
             }
-            return data;
         },
         register: async (formData: FormData) => {
             const response = await fetch(`${BASE_URL}/auth/register`, {
@@ -48,7 +59,26 @@ export const api = {
                 headers: await getHeaders(true),
                 body: formData,
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<{ message: string }>;
+        },
+        googleLogin: async (idToken: string) => {
+            console.log('API: Google Login...');
+            try {
+                const response = await fetch(`${BASE_URL}/auth/google`, {
+                    method: 'POST',
+                    headers: await getHeaders(),
+                    body: JSON.stringify({ idToken }),
+                });
+                console.log('API: Google Login Response status:', response.status);
+                const data = await handleResponse(response);
+                if (data.token) {
+                    await AsyncStorage.setItem('token', data.token);
+                }
+                return data as AuthResponse;
+            } catch (e) {
+                console.error('API: Google Login failed', e);
+                throw e;
+            }
         },
         forgotPassword: async (email: string) => {
             const response = await fetch(`${BASE_URL}/auth/forgot-password`, {
@@ -76,13 +106,13 @@ export const api = {
                 headers: await getHeaders(),
                 body: JSON.stringify({ content, imgUrl }),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<Entry>;
         },
         getHistory: async () => {
             const response = await fetch(`${BASE_URL}/mood-tracker`, {
                 headers: await getHeaders(),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<{ mood: string; score: number; _id: string; createdAt: string }[]>;
         }
     },
 
@@ -93,15 +123,15 @@ export const api = {
             const response = await fetch(url, {
                 headers: await getHeaders(),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<Entry[]>;
         },
         getById: async (id: string) => {
             const response = await fetch(`${BASE_URL}/entries/${id}`, {
                 headers: await getHeaders(),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<Entry>;
         },
-        update: async (id: string, updates: any) => {
+        update: async (id: string, updates: Partial<Entry>) => {
             const response = await fetch(`${BASE_URL}/entries/${id}`, {
                 method: 'PATCH',
                 headers: await getHeaders(),
@@ -114,7 +144,7 @@ export const api = {
                 method: 'DELETE',
                 headers: await getHeaders(),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<{ message: string }>;
         }
     },
 
@@ -126,19 +156,19 @@ export const api = {
                 headers: await getHeaders(),
                 body: JSON.stringify({ message, chatId }),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<{ message: string; chatId: string }>;
         },
         getHistory: async () => {
             const response = await fetch(`${BASE_URL}/chat`, {
                 headers: await getHeaders(),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<Chat[]>;
         },
         getSession: async (id: string) => {
             const response = await fetch(`${BASE_URL}/chat/${id}`, {
                 headers: await getHeaders(),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<Chat>;
         }
     },
 
@@ -148,9 +178,9 @@ export const api = {
             const response = await fetch(`${BASE_URL}/profile`, {
                 headers: await getHeaders(),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<{ success: boolean; user: User }>;
         },
-        update: async (updates: any) => {
+        update: async (updates: Partial<User> & { currentPassword?: string; newPassword?: string }) => {
             const response = await fetch(`${BASE_URL}/profile`, {
                 method: 'PUT',
                 headers: await getHeaders(),
@@ -160,7 +190,7 @@ export const api = {
         }
     },
 
-    // Todo
+    // Todo (Not in OpenAPI spec but kept as per plan)
     todo: {
         getAll: async () => {
             const response = await fetch(`${BASE_URL}/todo`, {
@@ -185,7 +215,7 @@ export const api = {
         }
     },
 
-    // Blog
+    // Blog (Not in OpenAPI spec but kept as per plan)
     posts: {
         getAll: async (all?: boolean) => {
             const url = all ? `${BASE_URL}/posts?all=true` : `${BASE_URL}/posts`;
@@ -208,7 +238,7 @@ export const api = {
             const response = await fetch(`${BASE_URL}/space/draw`, {
                 headers: await getHeaders(),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<SpaceDrawStatus>;
         },
         recordDraw: async () => {
             const response = await fetch(`${BASE_URL}/space/draw`, {
@@ -232,6 +262,7 @@ export const api = {
             return handleResponse(response);
         },
         getLeaderboard: async () => {
+            // Not in OpenAPI spec but kept
             const response = await fetch(`${BASE_URL}/space/leaderboard`, {
                 headers: await getHeaders(),
             });

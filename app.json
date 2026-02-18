@@ -3,9 +3,9 @@
     "name": "echo-app",
     "slug": "echo-app",
     "version": "1.0.0",
+    "scheme": "echo-app",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "echoapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

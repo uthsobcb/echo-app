@@ -14,6 +14,7 @@ interface StorageContextType {
     appMode: AppMode;
     loginAsLocal: (userData?: Partial<User>) => Promise<void>;
     loginAsAPI: (credentials: { email: string; password: any }) => Promise<void>;
+    loginWithGoogle: (idToken: string) => Promise<void>;
     registerAPI: (formData: FormData) => Promise<void>;
     logout: () => Promise<void>;
     addEntry: (entry: Omit<Entry, 'id' | 'createdAt'>) => Promise<void>;
@@ -26,7 +27,6 @@ interface StorageContextType {
 
 const defaultUser: User = {
     name: 'Guest',
-    mood: 'Neutral 😐',
     isLocal: true,
 };
 
@@ -158,13 +158,42 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const loginAsAPI = async (credentials: { email: string; password: any }) => {
-        const result = await api.auth.login(credentials);
-        if (result.token) {
-            await AsyncStorage.setItem('token', result.token);
-            setAppMode('api');
-            setIsAuthenticated(true);
-            await AsyncStorage.setItem('appMode', 'api');
-            await loadData('api');
+        console.log('Context: loginAsAPI called');
+        try {
+            const result = await api.auth.login(credentials);
+            console.log('Context: login result received within loginAsAPI', result);
+            if (result.token) {
+                console.log('Context: Token found, saving matches...');
+                await AsyncStorage.setItem('token', result.token);
+                setAppMode('api');
+                setIsAuthenticated(true);
+                await AsyncStorage.setItem('appMode', 'api');
+                console.log('Context: Loading initial data...');
+                await loadData('api');
+                console.log('Context: Data loaded successfully');
+            } else {
+                console.log('Context: No token in result');
+            }
+        } catch (e) {
+            console.error('Context: loginAsAPI error', e);
+            throw e;
+        }
+    };
+
+    const loginWithGoogle = async (idToken: string) => {
+        console.log('Context: loginWithGoogle called');
+        try {
+            const result = await api.auth.googleLogin(idToken);
+            if (result.token) {
+                await AsyncStorage.setItem('token', result.token);
+                setAppMode('api');
+                setIsAuthenticated(true);
+                await AsyncStorage.setItem('appMode', 'api');
+                await loadData('api');
+            }
+        } catch (e) {
+            console.error('Context: loginWithGoogle error', e);
+            throw e;
         }
     };
 
@@ -245,6 +274,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 appMode,
                 loginAsLocal,
                 loginAsAPI,
+                loginWithGoogle,
                 registerAPI,
                 logout,
                 addEntry,
