@@ -8,15 +8,17 @@ import { Alert, Text, TouchableOpacity, View } from 'react-native';
 const getMoodConfig = (mood: string) => {
     switch (mood) {
         case 'Happy':
-            return { color: '#16a34a', bg: '#dcfce7', label: 'Happy' };
+            return { color: '#ee9d2b', bg: '#fff7ed', label: 'Happy', emoji: '😊' }; // Primary Orange
         case 'Sad':
-            return { color: '#2563eb', bg: '#dbeafe', label: 'Sad' };
+            return { color: '#3b82f6', bg: '#dbeafe', label: 'Sad', emoji: '😔' }; // Blue (Keep standard)
         case 'Angry':
-            return { color: '#dc2626', bg: '#fee2e2', label: 'Angry' };
+            return { color: '#ef4444', bg: '#fee2e2', label: 'Angry', emoji: '😠' }; // Red (Keep standard)
         case 'Excited':
-            return { color: '#ca8a04', bg: '#fef9c3', label: 'Excited' };
+            return { color: '#8b5cf6', bg: '#f3e8ff', label: 'Excited', emoji: '🤩' }; // Purple (Keep standard)
+        case 'Calm':
+            return { color: '#10b981', bg: '#d1fae5', label: 'Calm', emoji: '😌' }; // Emerald (Keep standard)
         default:
-            return { color: '#9333ea', bg: '#f3e8ff', label: mood };
+            return { color: '#6b7280', bg: '#f3f4f6', label: mood, emoji: '😐' }; // Gray
     }
 };
 
@@ -25,20 +27,23 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
 
     if (!entry) {
         return (
-            <View className="mt-4 bg-white rounded-2xl p-6 items-center justify-center border border-gray-100">
-                <Text className="text-gray-400 text-sm">No entries yet.</Text>
+            <View className="mt-4 bg-white rounded-xl p-8 items-center justify-center border border-zinc-100 border-dashed">
+                <Text className="text-gray-400 text-sm font-medium">No entries yet.</Text>
             </View>
         );
     }
 
     const id = entry._id || entry.id;
     const date = new Date(entry.createdAt);
-    const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Format: "Oct 12, 10:30 AM"
+    const dateTimeString = date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ", " +
+        date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // Simulate a title based on content or fallback to Date
     const title = typeof entry.content === 'string' && entry.content.length > 0
-        ? entry.content.split('\n')[0].substring(0, 30) + (entry.content.split('\n')[0].length > 30 ? '...' : '')
-        : date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+        ? entry.content.split('\n')[0].substring(0, 40) + (entry.content.split('\n')[0].length > 40 ? '...' : '')
+        : "Start Writing...";
 
     const moodConfig = getMoodConfig(entry.mood);
 
@@ -72,59 +77,69 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
 
     return (
         <TouchableOpacity
-            activeOpacity={0.8}
+            activeOpacity={0.9}
             onPress={handleEdit}
-            className="mt-4 bg-white rounded-2xl p-5 border border-gray-100"
-            style={{
-                shadowColor: "#000",
-                shadowOpacity: 0.04,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 4 },
-                elevation: 2,
-            }}
+            className="mt-4 bg-white rounded-xl p-4 shadow-sm border border-gray-100"
         >
-            {/* Header: Time | Mood Pill */}
+            {/* Header: Date | Mood Pill */}
             <View className="flex-row justify-between items-center mb-3">
-                <Text className="text-gray-400 text-xs font-medium uppercase tracking-wide">
-                    {timeString}
+                <Text className="text-gray-500 text-xs font-medium">
+                    {dateTimeString}
                 </Text>
 
-                <View className="flex-row items-center gap-2 px-2.5 py-1 rounded-full" style={{ backgroundColor: moodConfig.bg }}>
-                    <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: moodConfig.color }} />
-                    <Text style={{ color: moodConfig.color }} className="text-[10px] font-bold uppercase tracking-wide">
-                        {entry.mood} {entry.score ? `• ${entry.score}` : ''}
+                <View className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ backgroundColor: moodConfig.bg }}>
+                    <Text style={{ color: moodConfig.color }} className="text-[14px]">
+                        {moodConfig.emoji}
+                    </Text>
+                    <Text style={{ color: moodConfig.color }} className="text-xs font-bold">
+                        {entry.score} {moodConfig.label}
                     </Text>
                 </View>
             </View>
 
-            {/* Content Body */}
-            <View className="mb-4">
-                <Text className="text-gray-900 text-[18px] font-bold mb-1 leading-tight">
-                    {title}
+            {/* Title */}
+            <Text className="text-gray-900 text-[18px] font-bold mb-3 leading-tight">
+                {title}
+            </Text>
+
+            {/* AI Insight Box */}
+            {entry.comment && (
+                <View className="bg-[#e0e7ff]/30 rounded-lg p-3 mb-3 border-l-4 border-[#4338ca]/40">
+                    <View className="flex-row items-center gap-2 mb-1">
+                        <Ionicons name="sparkles" size={14} color="#4338ca" />
+                        <Text className="text-[#4338ca] text-[10px] uppercase tracking-wider font-bold">
+                            AI Insight
+                        </Text>
+                    </View>
+
+                    <Text className="text-gray-700 text-sm leading-relaxed" numberOfLines={4}>
+                        {entry.comment}
+                    </Text>
+                </View>
+            )}
+
+            {!entry.comment && entry.content && (
+                <Text className="text-gray-600 text-[14px] leading-[22px] mb-3" numberOfLines={2}>
+                    {entry.content.replace(title, '').trim()}
                 </Text>
-                <Text
-                    className="text-gray-500 text-[15px] leading-[24px]"
-                    numberOfLines={2}
-                >
-                    {typeof entry.content === 'string' ? entry.content.replace(title, '').trim() : ''}
-                </Text>
-            </View>
+            )}
 
             {/* Footer: Icons | Read More */}
-            <View className="flex-row justify-between items-center pt-2">
-                <View className="flex-row gap-3">
-                    {entry.imgUrl && <Ionicons name="image-outline" size={16} color="#9ca3af" />}
-                    {entry.comment && <Ionicons name="chatbubble-ellipses-outline" size={16} color="#9ca3af" />}
-                    <TouchableOpacity onPress={handleDelete} hitSlop={10}>
-                        <Ionicons name="trash-outline" size={16} color="#ef4444" style={{ opacity: 0.5 }} />
+            <View className="flex-row justify-between items-center pt-1 mt-1">
+                <View className="flex-row gap-2">
+                    <TouchableOpacity className="p-1">
+                        <Ionicons name="chatbubble-outline" size={20} color="#9ca3af" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleDelete} hitSlop={10} className="p-1">
+                        <Ionicons name="trash-outline" size={20} color="#9ca3af" />
                     </TouchableOpacity>
                 </View>
 
-                <View className="flex-row items-center gap-1">
-                    <Text style={{ color: moodConfig.color }} className="text-xs font-bold">
+                <View className="flex-row items-center gap-0.5">
+                    <Text className="text-[#ee9d2b] text-sm font-bold">
                         Read more
                     </Text>
-                    <Ionicons name="arrow-forward" size={12} color={moodConfig.color} />
+                    <Ionicons name="chevron-forward" size={16} color="#ee9d2b" />
                 </View>
             </View>
         </TouchableOpacity>
