@@ -9,7 +9,7 @@ const Filter = () => {
       <FlatList
         data={filters}
         renderItem={({ item }) =>
-          <Text className={`text-gray-700 font-semibold p-2 rounded-2xl ${selectedFilter === item ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} onPress={() => setSelectedFilter(item)}>
+          <Text className={`font-semibold px-5 py-2.5 rounded-full overflow-hidden border ${selectedFilter === item ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200' : 'bg-white text-gray-600 border-gray-200'}`} onPress={() => setSelectedFilter(item)}>
             {item}
           </Text>
         }
@@ -17,7 +17,7 @@ const Filter = () => {
         horizontal
         showsHorizontalScrollIndicator={false}
         ItemSeparatorComponent={() => <View className='w-4' />}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 8 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 12 }}
       />
     </View>
   )

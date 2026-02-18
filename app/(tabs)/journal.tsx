@@ -13,17 +13,22 @@ export default function Journal() {
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            <View className="flex-row items-center justify-between px-6 py-4">
+            <View className="flex-row items-center justify-between px-6 pt-6 pb-4 bg-white border-b border-gray-100">
                 <View>
-                    <Text className="text-gray-700 text-lg font-semibold">Good Morning,</Text>
-                    <Text className="text-2xl font-bold text-gray-900">{user.name}</Text>
+                    <Text className="text-gray-500 text-base font-medium mb-1">Good Morning,</Text>
+                    <Text className="text-3xl font-extrabold text-gray-900 tracking-tight">{user.name}</Text>
                 </View>
 
-                <View className="flex-row items-center gap-3">
-                    <TouchableOpacity className="bg-gray-100 p-2 rounded-full" onPress={() => { router.push('/(chat)') }}>
-                        <Ionicons name="chatbox" color="#374151" size={24} />
+                <View className="flex-row items-center gap-4">
+                    <TouchableOpacity
+                        className="bg-gray-50 p-2.5 rounded-full border border-gray-100 shadow-sm"
+                        onPress={() => { router.push('/(chat)') }}
+                    >
+                        <Ionicons name="chatbubble-ellipses-outline" color="#374151" size={22} />
                     </TouchableOpacity>
-                    <Image source={require('../../assets/images/avatar.png')} className="h-14 w-14 rounded-full border-2 border-blue-400" />
+                    <View className="p-0.5 bg-white rounded-full border border-gray-200 shadow-sm">
+                        <Image source={require('../../assets/images/avatar.png')} className="h-12 w-12 rounded-full" />
+                    </View>
                 </View>
             </View>
             <Filter />
