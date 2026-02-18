@@ -1,23 +1,52 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthResponse, Chat, Entry, SpaceDrawStatus, User } from '../types/data';
 
-const BASE_URL = 'https://my-echo.space/api';
+const BASE_URL = 'https://www.my-echo.space/api';
 
 async function getHeaders(isMultipart = false) {
-    const token = await AsyncStorage.getItem('token');
-    const headers: Record<string, string> = {
-        'Accept': 'application/json',
-    };
+    console.log('API: getHeaders called');
+    try {
+        const token = await AsyncStorage.getItem('token');
+        console.log('API: Token retrieved from storage:', token ? 'Yes' : 'No');
+        const headers: Record<string, string> = {
+            'Accept': 'application/json',
+        };
 
-    if (!isMultipart) {
-        headers['Content-Type'] = 'application/json';
+        if (!isMultipart) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        console.log('API: Headers constructed');
+        return headers;
+    } catch (e) {
+        console.error('API: Error in getHeaders', e);
+        throw e;
     }
+}
 
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+const fetchWithTimeout = async (resource: RequestInfo, options: RequestInit = {}) => {
+    const { timeout = 15000 } = options as any;
+
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    try {
+        const response = await fetch(resource, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error: any) {
+        clearTimeout(id);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timed out');
+        }
+        throw error;
     }
-
-    return headers;
 }
 
 const handleResponse = async (response: Response) => {
@@ -35,9 +64,12 @@ export const api = {
         login: async (credentials: { email: string; password: string }) => {
             console.log('API: Logging in...');
             try {
-                const response = await fetch(`${BASE_URL}/auth/login`, {
+                const headers = await getHeaders();
+                console.log('API: Headers ready, starting fetch...');
+
+                const response = await fetchWithTimeout(`${BASE_URL}/auth/login`, {
                     method: 'POST',
-                    headers: await getHeaders(),
+                    headers: headers,
                     body: JSON.stringify(credentials),
                 });
                 console.log('API: Login Response status:', response.status);

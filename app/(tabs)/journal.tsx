@@ -30,7 +30,7 @@ export default function Journal() {
 
             <FlatList
                 data={entries}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => item.id || item._id || Math.random().toString()}
                 renderItem={({ item }) => (
                     <View className="px-4 mb-3">
                         <EntryCard entry={item} />
