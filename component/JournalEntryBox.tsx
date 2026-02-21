@@ -16,10 +16,10 @@ interface JournalEntryBoxProps {
         image?: string
         voice?: string
     }) => void
-    onGetPrompt?: () => void
-    onVoiceRecord?: () => void
-    onAttachImage?: () => void
-    onScanHandwriting?: () => void
+    onGetPrompt?: (content: string, setContent: React.Dispatch<React.SetStateAction<string>>) => void;
+    onVoiceRecord?: (isRecording: boolean, setContent: React.Dispatch<React.SetStateAction<string>>) => Promise<string | null | undefined | boolean>;
+    onAttachImage?: () => Promise<string | null | undefined>;
+    onScanHandwriting?: () => void;
     placeholder?: string
     initialContent?: string
     actionLabel?: string
@@ -37,7 +37,7 @@ export default function JournalEntryBox({
 }: JournalEntryBoxProps) {
     const [content, setContent] = useState(initialContent)
     const [attachedImage, setAttachedImage] = useState<string | null>(null)
-    const [voiceRecorded, setVoiceRecorded] = useState<boolean>(false)
+    const [voiceRecorded, setVoiceRecorded] = useState<string | boolean>(false)
     const [isSaved, setIsSaved] = useState(false)
     const [focusedInput, setFocusedInput] = useState<boolean>(false)
 
@@ -63,8 +63,8 @@ export default function JournalEntryBox({
         onSubmit?.({
             title: 'Entry',
             content: content.trim(),
-            image: attachedImage || undefined,
-            voice: voiceRecorded ? 'recorded' : undefined,
+            image: typeof attachedImage === 'string' ? attachedImage : undefined,
+            voice: typeof voiceRecorded === 'string' ? voiceRecorded : voiceRecorded ? 'recorded' : undefined,
         })
 
         setContent('')
@@ -72,14 +72,24 @@ export default function JournalEntryBox({
         setVoiceRecorded(false)
     }
 
-    const handleVoiceRecord = () => {
-        onVoiceRecord?.()
-        setVoiceRecorded(true)
+    const handleVoiceRecord = async () => {
+        if (onVoiceRecord) {
+            const result = await onVoiceRecord(!!voiceRecorded, setContent);
+            if (result !== undefined && result !== null) {
+                setVoiceRecorded(result);
+            }
+        } else {
+            setVoiceRecorded(!voiceRecorded);
+        }
     }
 
-    const handleAttachImage = () => {
-        onAttachImage?.()
-        setAttachedImage('image-attached')
+    const handleAttachImage = async () => {
+        if (onAttachImage) {
+            const result = await onAttachImage();
+            if (result) setAttachedImage(result);
+        } else {
+            setAttachedImage('image-attached');
+        }
     }
 
     const isComplete = !!content.trim()
@@ -182,7 +192,7 @@ export default function JournalEntryBox({
                                     keyboardShouldPersistTaps="handled"
                                 >
                                     <View className="flex-row gap-3">
-                                        <Pressable onPress={onGetPrompt} className="rounded-2xl overflow-hidden">
+                                        <Pressable onPress={() => onGetPrompt?.(content, setContent)} className="rounded-2xl overflow-hidden">
                                             {({ pressed }) => (
                                                 <View
                                                     className="flex-row items-center justify-center py-3.5 px-5 gap-2"
@@ -249,7 +259,7 @@ export default function JournalEntryBox({
                                                         className={`text-xs font-bold ${voiceRecorded ? 'text-red-900' : 'text-slate-700'
                                                             }`}
                                                     >
-                                                        Voice
+                                                        Speech
                                                     </Text>
                                                 </View>
                                             )}

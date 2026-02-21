@@ -1,6 +1,8 @@
 import JournalEntryBox from '@/component/JournalEntryBox';
-import React, { useEffect, useState } from 'react';
-import { Modal, Text, TouchableOpacity, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Modal, Text, TouchableOpacity, View } from 'react-native';
 
 import { useStorage } from '@/context/StorageContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -14,6 +16,15 @@ export default function Create() {
     const [pendingEntryContent, setPendingEntryContent] = useState<string>('');
     const [initialContent, setInitialContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+    const contentSetterRef = useRef<React.Dispatch<React.SetStateAction<string>> | null>(null);
+
+    useSpeechRecognitionEvent('result', (event) => {
+        const transcript = event.results[0]?.transcript;
+        if (transcript && contentSetterRef.current) {
+            contentSetterRef.current((prev) => prev ? `${prev} ${transcript}` : transcript);
+        }
+    });
 
     useEffect(() => {
         if (entryId) {
@@ -70,21 +81,76 @@ export default function Create() {
         }
     };
 
-    const handleGetPrompt = () => {
-        console.log('Get prompt')
-    }
+    const handleGetPrompt = (current: string, setContent: React.Dispatch<React.SetStateAction<string>>) => {
+        const prompts = [
+            "What are you most grateful for today?",
+            "What is a challenge you overcame recently?",
+            "Describe a moment that made you smile today.",
+            "What is something you want to achieve this week?",
+            "What is a thought that keeps returning to your mind?",
+            "How are you prioritizing your mental health today?",
+            "What is a memory that brought you joy recently?"
+        ];
+        const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)];
+        setContent(current ? `${current}\n\n${randomPrompt}` : randomPrompt);
+    };
 
-    const handleVoiceRecord = () => {
-        console.log('Start voice recording')
-    }
+    const handleVoiceRecord = async (isRecording: boolean, setContent: React.Dispatch<React.SetStateAction<string>>) => {
+        try {
+            if (isRecording) {
+                ExpoSpeechRecognitionModule.stop();
+                return false;
+            } else {
+                contentSetterRef.current = setContent;
+                const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+                if (!permission.granted) {
+                    Alert.alert('Permission needed', 'Speech recognition permission is required.');
+                    return false;
+                }
 
-    const handleAttachImage = () => {
-        console.log('Attach image')
-    }
+                ExpoSpeechRecognitionModule.start({
+                    lang: 'en-US',
+                    interimResults: false,
+                    maxAlternatives: 1,
+                });
+
+                return true;
+            }
+        } catch (err) {
+            console.error('Failed to start speech recognition', err);
+            Alert.alert('Error', 'Failed to start speech recognition');
+            return false;
+        }
+    };
+
+    const handleAttachImage = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission needed', 'Sorry, camera roll permissions are required!');
+                return undefined;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 1,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                return result.assets[0].uri;
+            }
+        } catch (error) {
+            console.error('Failed to pick image', error);
+            Alert.alert('Error', 'Failed to pick image');
+        }
+        return undefined;
+    };
 
     const handleScanHandwriting = () => {
-        console.log('Scan handwriting')
-    }
+        Alert.alert('Coming Soon', 'Handwriting OCR scanning will be available in a future update.');
+    };
 
     return (
         <View className="flex-1 bg-white">
