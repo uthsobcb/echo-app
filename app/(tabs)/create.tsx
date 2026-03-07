@@ -1,11 +1,21 @@
 import JournalEntryBox from '@/component/JournalEntryBox';
 import * as ImagePicker from 'expo-image-picker';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Modal, Text, TouchableOpacity, View } from 'react-native';
 
 import { useStorage } from '@/context/StorageContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+
+// Safely load expo-speech-recognition (not available in Expo Go)
+let ExpoSpeechRecognitionModule: any = null;
+let useSpeechRecognitionEvent: (event: string, cb: (e: any) => void) => void = () => { };
+try {
+    const sr = require('expo-speech-recognition');
+    ExpoSpeechRecognitionModule = sr.ExpoSpeechRecognitionModule;
+    useSpeechRecognitionEvent = sr.useSpeechRecognitionEvent;
+} catch {
+    console.log('[SpeechRecognition] Not available in this environment (Expo Go).');
+}
 
 export default function Create() {
     const { addEntry, entries, updateEntry, appMode } = useStorage();
@@ -96,6 +106,10 @@ export default function Create() {
     };
 
     const handleVoiceRecord = async (isRecording: boolean, setContent: React.Dispatch<React.SetStateAction<string>>) => {
+        if (!ExpoSpeechRecognitionModule) {
+            Alert.alert('Not Available', 'Voice recording requires a development build, not Expo Go.');
+            return false;
+        }
         try {
             if (isRecording) {
                 ExpoSpeechRecognitionModule.stop();

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../service/api';
+import { setupNotifications } from '../service/NotificationService';
 import { Entry, Stats, User } from '../types/data';
 
 type AppMode = 'local' | 'api';
@@ -171,6 +172,9 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 console.log('Context: Loading initial data...');
                 await loadData('api');
                 console.log('Context: Data loaded successfully');
+
+                // Fetch and save push token after successful API login
+                setupNotifications().catch(console.error);
             } else {
                 console.log('Context: No token in result');
             }
@@ -190,6 +194,9 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 setIsAuthenticated(true);
                 await AsyncStorage.setItem('appMode', 'api');
                 await loadData('api');
+
+                // Fetch and save push token after successful Google login
+                setupNotifications().catch(console.error);
             }
         } catch (e) {
             console.error('Context: loginWithGoogle error', e);

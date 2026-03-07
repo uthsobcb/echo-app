@@ -150,8 +150,11 @@ export const api = {
 
     // Entries
     entries: {
-        getAll: async (search?: string) => {
-            const url = search ? `${BASE_URL}/entries?search=${encodeURIComponent(search)}` : `${BASE_URL}/entries`;
+        getAll: async (search?: string, mood?: string) => {
+            const params = new URLSearchParams();
+            if (search) params.set('search', search);
+            if (mood && mood !== 'All') params.set('mood', mood);
+            const url = params.toString() ? `${BASE_URL}/entries?${params}` : `${BASE_URL}/entries`;
             const response = await fetch(url, {
                 headers: await getHeaders(),
             });
@@ -204,6 +207,18 @@ export const api = {
         }
     },
 
+    // Users
+    users: {
+        savePushToken: async (token: string) => {
+            const response = await fetch(`${BASE_URL}/users/push-token`, {
+                method: 'POST',
+                headers: await getHeaders(),
+                body: JSON.stringify({ token }),
+            });
+            return handleResponse(response);
+        }
+    },
+
     // Profile
     profile: {
         get: async () => {
@@ -217,6 +232,16 @@ export const api = {
                 method: 'PUT',
                 headers: await getHeaders(),
                 body: JSON.stringify(updates),
+            });
+            return handleResponse(response);
+        }
+    },
+
+    // Insights
+    insights: {
+        get: async (range: 'week' | 'month' | 'year' = 'week') => {
+            const response = await fetch(`${BASE_URL}/insights?range=${range}`, {
+                headers: await getHeaders(),
             });
             return handleResponse(response);
         }

@@ -1,88 +1,29 @@
+import { useStorage } from '@/context/StorageContext';
+import { api } from '@/service/api';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Dimensions, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 const chartWidth = width - 80;
 
-// Mock data for insights
-const weeklyMoods = [
-    { day: 'Mon', mood: 'happy', value: 4 },
-    { day: 'Tue', mood: 'neutral', value: 3 },
-    { day: 'Wed', mood: 'happy', value: 5 },
-    { day: 'Thu', mood: 'sad', value: 2 },
-    { day: 'Fri', mood: 'happy', value: 4 },
-    { day: 'Sat', mood: 'happy', value: 5 },
-    { day: 'Sun', mood: 'neutral', value: 3 },
-];
-
-// Bar chart data for mood tracker
-const moodBarData = weeklyMoods.map((item) => {
-    const colors: Record<number, string> = {
-        1: '#EF4444',
-        2: '#F59E0B',
-        3: '#FCD34D',
-        4: '#84CC16',
-        5: '#22C55E',
-    };
-    return {
-        value: item.value,
-        label: item.day,
-        frontColor: colors[item.value] || '#84CC16',
-        topLabelComponent: () => (
-            <Text style={{ fontSize: 16, marginBottom: 4 }}>
-                {item.mood === 'happy' ? '😊' : item.mood === 'neutral' ? '😐' : '😢'}
-            </Text>
-        ),
-    };
-});
-
-// Line chart data for writing activity over time
-const lineChartData = [
-    { value: 3, label: 'Jan 1' },
-    { value: 5, label: 'Jan 5' },
-    { value: 4, label: 'Jan 8' },
-    { value: 7, label: 'Jan 12' },
-    { value: 6, label: 'Jan 15' },
-    { value: 8, label: 'Jan 18' },
-    { value: 5, label: 'Jan 20' },
-];
-
-// Bar chart data for weekly entries
-const weeklyBarData = [
-    { value: 5, label: 'W1', frontColor: '#93C5FD' },
-    { value: 7, label: 'W2', frontColor: '#60A5FA' },
-    { value: 4, label: 'W3', frontColor: '#93C5FD' },
-    { value: 6, label: 'W4', frontColor: '#3B82F6' },
-];
-
-// Pie chart data for topics
-const pieData = [
-    { value: 12, color: '#3B82F6', text: 'Work', focused: true },
-    { value: 8, color: '#10B981', text: 'Family' },
-    { value: 6, color: '#F59E0B', text: 'Health' },
-    { value: 5, color: '#8B5CF6', text: 'Goals' },
-    { value: 4, color: '#EC4899', text: 'Gratitude' },
-];
-
 type TimeRange = 'week' | 'month' | 'year';
 
-function TimeRangeSelector({ selected, onSelect }: { selected: TimeRange; onSelect: (range: TimeRange) => void }) {
+const TOPIC_COLORS = ['#4F6BFF', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#EF4444'];
+
+function TimeRangeSelector({ selected, onSelect }: { selected: TimeRange; onSelect: (r: TimeRange) => void }) {
     const options: TimeRange[] = ['week', 'month', 'year'];
     return (
-        <View className="flex-row bg-gray-100 rounded-xl p-1">
-            {options.map((option) => (
+        <View style={s.tabRow}>
+            {options.map((o) => (
                 <TouchableOpacity
-                    key={option}
-                    onPress={() => onSelect(option)}
-                    className={`flex-1 py-2 px-4 rounded-lg ${selected === option ? 'bg-white' : ''}`}
-                    style={selected === option ? { shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 } : {}}
+                    key={o}
+                    onPress={() => onSelect(o)}
+                    style={[s.tab, selected === o && s.tabActive]}
                 >
-                    <Text className={`text-center text-sm font-medium capitalize ${selected === option ? 'text-blue-600' : 'text-gray-500'}`}>
-                        {option}
-                    </Text>
+                    <Text style={[s.tabText, selected === o && s.tabTextActive]}>{o.charAt(0).toUpperCase() + o.slice(1)}</Text>
                 </TouchableOpacity>
             ))}
         </View>
@@ -91,355 +32,351 @@ function TimeRangeSelector({ selected, onSelect }: { selected: TimeRange; onSele
 
 function StatCard({ icon, title, value, subtitle, color }: { icon: React.ReactNode; title: string; value: string; subtitle: string; color: string }) {
     return (
-        <View
-            className="flex-1 bg-white p-4 rounded-2xl"
-            style={{ shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 }}
-        >
-            <View className={`w-10 h-10 rounded-xl items-center justify-center mb-3`} style={{ backgroundColor: `${color}15` }}>
-                {icon}
-            </View>
-            <Text className="text-gray-500 text-xs font-medium">{title}</Text>
-            <Text className="text-2xl font-bold text-gray-900 mt-1">{value}</Text>
-            <Text className="text-gray-400 text-xs mt-1">{subtitle}</Text>
+        <View style={s.statCard}>
+            <View style={[s.statIcon, { backgroundColor: color + '18' }]}>{icon}</View>
+            <Text style={s.statLabel}>{title}</Text>
+            <Text style={s.statValue}>{value}</Text>
+            <Text style={s.statSub}>{subtitle}</Text>
         </View>
     );
 }
 
 export default function Insights() {
+    const { appMode } = useStorage();
     const [timeRange, setTimeRange] = useState<TimeRange>('week');
+    const [data, setData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadInsights();
+    }, [timeRange]);
+
+    const loadInsights = async () => {
+        if (appMode !== 'api') {
+            setLoading(false);
+            return;
+        }
+        try {
+            setLoading(true);
+            const result = await api.insights.get(timeRange);
+            setData(result);
+        } catch (e) {
+            console.error('[Insights] Failed to load', e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Build chart data from API response or fall back to empty
+    const stats = data?.stats || {};
+    const moodTimeline: any[] = data?.moodTimeline || [];
+    const writingTrend: any[] = data?.writingTrend || [];
+    const weeklyEntries: any[] = data?.weeklyEntries || [];
+    const topTopics: any[] = data?.topTopics || [];
+    const commonWords: any[] = data?.commonWords || [];
+    const activityCalendar: any[] = data?.activityCalendar || [];
+    const aiInsights: string[] = data?.aiInsights || [];
+    const trendComparison: string = data?.writingTrendComparison || '';
+
+    const moodColors: Record<number, string> = { 1: '#EF4444', 2: '#F59E0B', 3: '#FCD34D', 4: '#84CC16', 5: '#22C55E' };
+    const moodScoreToEmoji: Record<string, string> = { happy: '😊', sad: '😢', neutral: '😐', excited: '🤩', anxious: '😰', angry: '😡' };
+
+    const moodBarData = moodTimeline.map((item) => ({
+        value: item.score || 3,
+        label: item.day,
+        frontColor: moodColors[item.score] || '#84CC16',
+        topLabelComponent: () => (
+            <Text style={{ fontSize: 14, marginBottom: 2 }}>
+                {moodScoreToEmoji[item.mood?.toLowerCase()] || '😐'}
+            </Text>
+        ),
+    }));
+
+    const lineData = writingTrend.map((item) => ({ value: item.count, label: item.label }));
+
+    const weeklyBarData = weeklyEntries.map((item, i) => ({
+        value: item.count,
+        label: item.label,
+        frontColor: i % 2 === 0 ? '#93C5FD' : '#4F6BFF',
+    }));
+
+    const pieData = topTopics.map((item, i) => ({
+        value: item.count,
+        color: TOPIC_COLORS[i % TOPIC_COLORS.length],
+        text: item.topic,
+    }));
+    const totalTopicCount = topTopics.reduce((s, t) => s + t.count, 0);
+
+    // Calendar
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+    const activitySet = new Set(activityCalendar.filter(d => d.hasEntry).map(d => new Date(d.date).getDate()));
+
+    const calendarRows: (number | null)[][] = [];
+    let cells: (number | null)[] = Array(firstDayOfMonth).fill(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+        cells.push(d);
+        if (cells.length === 7) { calendarRows.push(cells); cells = []; }
+    }
+    if (cells.length) { while (cells.length < 7) cells.push(null); calendarRows.push(cells); }
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-            <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+        <SafeAreaView style={s.safe}>
+            <ScrollView showsVerticalScrollIndicator={false}>
                 {/* Header */}
-                <View className="px-6 py-4">
-                    <Text className="text-2xl font-bold text-gray-900">Insights</Text>
-                    <Text className="text-gray-500 text-sm mt-1">Track your journaling journey</Text>
+                <View style={s.header}>
+                    <Text style={s.pageTitle}>Insights</Text>
+                    <Text style={s.pageSub}>Track your journaling journey</Text>
                 </View>
 
-                {/* Time Range Selector */}
-                <View className="px-6 mb-6">
+                {/* Time Range */}
+                <View style={s.px}>
                     <TimeRangeSelector selected={timeRange} onSelect={setTimeRange} />
                 </View>
 
-                {/* Quick Stats */}
-                <View className="px-4 mb-6">
-                    <View className="flex-row gap-3">
-                        <StatCard
-                            icon={<Ionicons name="document-text" size={20} color="#3B82F6" />}
-                            title="Total Entries"
-                            value="47"
-                            subtitle="This month"
-                            color="#3B82F6"
-                        />
-                        <StatCard
-                            icon={<MaterialCommunityIcons name="fire" size={20} color="#F59E0B" />}
-                            title="Current Streak"
-                            value="12"
-                            subtitle="Days"
-                            color="#F59E0B"
-                        />
+                {loading ? (
+                    <View style={s.loader}>
+                        <ActivityIndicator size="large" color="#4F6BFF" />
+                        <Text style={s.loaderText}>Loading insights…</Text>
                     </View>
-                    <View className="flex-row gap-3 mt-3">
-                        <StatCard
-                            icon={<Feather name="clock" size={20} color="#8B5CF6" />}
-                            title="Avg. Length"
-                            value="342"
-                            subtitle="Words/entry"
-                            color="#8B5CF6"
-                        />
-                        <StatCard
-                            icon={<Ionicons name="trending-up" size={20} color="#10B981" />}
-                            title="Best Streak"
-                            value="21"
-                            subtitle="Days"
-                            color="#10B981"
-                        />
-                    </View>
-                </View>
-
-                {/* Mood Tracker with Bar Chart */}
-                <View className="px-4 mb-6">
-                    <View
-                        className="bg-white p-5 rounded-3xl"
-                        style={{ shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, elevation: 2 }}
-                    >
-                        <View className="flex-row items-center justify-between mb-4">
-                            <Text className="text-lg font-bold text-gray-900">Mood Tracker</Text>
-                            <View className="flex-row items-center">
-                                <Text className="text-2xl mr-2">😊</Text>
-                                <Text className="text-sm text-gray-500">Mostly Happy</Text>
+                ) : (
+                    <>
+                        {/* Stats */}
+                        <View style={s.px}>
+                            <View style={s.statsRow}>
+                                <StatCard icon={<Ionicons name="document-text" size={20} color="#4F6BFF" />} title="Total Entries" value={`${stats.totalEntries ?? '—'}`} subtitle="This period" color="#4F6BFF" />
+                                <StatCard icon={<MaterialCommunityIcons name="fire" size={20} color="#F59E0B" />} title="Current Streak" value={`${stats.currentStreak ?? '—'}`} subtitle="Days" color="#F59E0B" />
+                            </View>
+                            <View style={[s.statsRow, { marginTop: 10 }]}>
+                                <StatCard icon={<Feather name="clock" size={20} color="#8B5CF6" />} title="Avg. Length" value={`${stats.avgWordCount ?? '—'}`} subtitle="Words/entry" color="#8B5CF6" />
+                                <StatCard icon={<Ionicons name="trending-up" size={20} color="#10B981" />} title="Best Streak" value={`${stats.bestStreak ?? '—'}`} subtitle="Days" color="#10B981" />
                             </View>
                         </View>
 
-                        <View className="items-center">
-                            <BarChart
-                                data={moodBarData}
-                                width={chartWidth}
-                                height={150}
-                                barWidth={28}
-                                spacing={20}
-                                roundedTop
-                                roundedBottom
-                                xAxisThickness={0}
-                                yAxisThickness={0}
-                                yAxisTextStyle={{ color: '#9CA3AF', fontSize: 10 }}
-                                xAxisLabelTextStyle={{ color: '#6B7280', fontSize: 11 }}
-                                noOfSections={5}
-                                maxValue={5}
-                                hideRules
-                                isAnimated
-                            />
-                        </View>
-                    </View>
-                </View>
-
-                {/* Writing Activity Line Chart */}
-                <View className="px-4 mb-6">
-                    <View
-                        className="bg-white p-5 rounded-3xl"
-                        style={{ shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, elevation: 2 }}
-                    >
-                        <View className="flex-row items-center justify-between mb-4">
-                            <Text className="text-lg font-bold text-gray-900">Writing Trend</Text>
-                            <View className="bg-green-50 px-3 py-1 rounded-full">
-                                <Text className="text-green-600 text-xs font-semibold">+23% vs last week</Text>
-                            </View>
-                        </View>
-
-                        <View className="items-center">
-                            <LineChart
-                                data={lineChartData}
-                                width={chartWidth}
-                                height={150}
-                                spacing={40}
-                                color="#3B82F6"
-                                thickness={3}
-                                startFillColor="#3B82F6"
-                                endFillColor="#DBEAFE"
-                                startOpacity={0.4}
-                                endOpacity={0.1}
-                                initialSpacing={20}
-                                noOfSections={4}
-                                yAxisColor="transparent"
-                                xAxisColor="transparent"
-                                yAxisTextStyle={{ color: '#9CA3AF', fontSize: 10 }}
-                                xAxisLabelTextStyle={{ color: '#6B7280', fontSize: 9 }}
-                                hideDataPoints={false}
-                                dataPointsColor="#3B82F6"
-                                dataPointsRadius={5}
-                                curved
-                                areaChart
-                                isAnimated
-                            />
-                        </View>
-                    </View>
-                </View>
-
-                {/* Weekly Entries Bar Chart */}
-                <View className="px-4 mb-6">
-                    <View
-                        className="bg-white p-5 rounded-3xl"
-                        style={{ shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, elevation: 2 }}
-                    >
-                        <Text className="text-lg font-bold text-gray-900 mb-4">Weekly Entries</Text>
-
-                        <View className="items-center">
-                            <BarChart
-                                data={weeklyBarData}
-                                width={chartWidth}
-                                height={120}
-                                barWidth={50}
-                                spacing={25}
-                                roundedTop
-                                xAxisThickness={0}
-                                yAxisThickness={0}
-                                yAxisTextStyle={{ color: '#9CA3AF', fontSize: 10 }}
-                                xAxisLabelTextStyle={{ color: '#6B7280', fontSize: 12 }}
-                                noOfSections={4}
-                                hideRules
-                                showValuesAsTopLabel
-                                topLabelTextStyle={{ color: '#374151', fontSize: 12, fontWeight: '600' }}
-                                isAnimated
-                            />
-                        </View>
-                    </View>
-                </View>
-
-                {/* Top Topics with Pie Chart */}
-                <View className="px-4 mb-6">
-                    <View
-                        className="bg-white p-5 rounded-3xl"
-                        style={{ shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, elevation: 2 }}
-                    >
-                        <Text className="text-lg font-bold text-gray-900 mb-4">Top Topics</Text>
-
-                        <View className="flex-row items-center">
-                            <PieChart
-                                data={pieData}
-                                donut
-                                radius={70}
-                                innerRadius={45}
-                                centerLabelComponent={() => (
-                                    <View className="items-center">
-                                        <Text className="text-xl font-bold text-gray-900">35</Text>
-                                        <Text className="text-xs text-gray-500">Total</Text>
+                        {/* Mood Tracker */}
+                        {moodBarData.length > 0 && (
+                            <View style={s.px}>
+                                <View style={s.card}>
+                                    <View style={s.cardHeader}>
+                                        <Text style={s.cardTitle}>Mood Tracker</Text>
                                     </View>
-                                )}
-                                isAnimated
-                            />
+                                    <View style={{ alignItems: 'center' }}>
+                                        <BarChart data={moodBarData} width={chartWidth} height={150} barWidth={28} spacing={20} roundedTop roundedBottom xAxisThickness={0} yAxisThickness={0} yAxisTextStyle={s.chartAxisText} xAxisLabelTextStyle={s.chartAxisText} noOfSections={5} maxValue={5} hideRules isAnimated />
+                                    </View>
+                                </View>
+                            </View>
+                        )}
 
-                            <View className="flex-1 ml-6">
-                                {pieData.map((item, index) => (
-                                    <View key={index} className="flex-row items-center mb-2">
-                                        <View
-                                            style={{ backgroundColor: item.color }}
-                                            className="w-3 h-3 rounded-full mr-2"
-                                        />
-                                        <Text className="text-sm text-gray-700 flex-1">{item.text}</Text>
-                                        <Text className="text-sm font-semibold text-gray-900">{item.value}</Text>
+                        {/* Writing Trend */}
+                        {lineData.length > 0 && (
+                            <View style={s.px}>
+                                <View style={s.card}>
+                                    <View style={s.cardHeader}>
+                                        <Text style={s.cardTitle}>Writing Trend</Text>
+                                        {trendComparison ? (
+                                            <View style={[s.badge, { backgroundColor: trendComparison.startsWith('+') ? '#ECFDF5' : '#FEF2F2' }]}>
+                                                <Text style={{ color: trendComparison.startsWith('+') ? '#059669' : '#DC2626', fontSize: 12, fontWeight: '700' }}>{trendComparison} vs last period</Text>
+                                            </View>
+                                        ) : null}
+                                    </View>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <LineChart data={lineData} width={chartWidth} height={150} spacing={40} color="#4F6BFF" thickness={3} startFillColor="#4F6BFF" endFillColor="#DBEAFE" startOpacity={0.4} endOpacity={0.1} initialSpacing={20} noOfSections={4} yAxisColor="transparent" xAxisColor="transparent" yAxisTextStyle={s.chartAxisText} xAxisLabelTextStyle={{ ...s.chartAxisText, fontSize: 9 }} dataPointsColor="#4F6BFF" dataPointsRadius={5} curved areaChart isAnimated />
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Weekly Entries */}
+                        {weeklyBarData.length > 0 && (
+                            <View style={s.px}>
+                                <View style={s.card}>
+                                    <Text style={s.cardTitle}>Weekly Entries</Text>
+                                    <View style={{ alignItems: 'center', marginTop: 12 }}>
+                                        <BarChart data={weeklyBarData} width={chartWidth} height={120} barWidth={50} spacing={25} roundedTop xAxisThickness={0} yAxisThickness={0} yAxisTextStyle={s.chartAxisText} xAxisLabelTextStyle={s.chartAxisText} noOfSections={4} hideRules showValuesAsTopLabel topLabelTextStyle={{ color: '#374151', fontSize: 12, fontWeight: '600' }} isAnimated />
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Top Topics */}
+                        {pieData.length > 0 && (
+                            <View style={s.px}>
+                                <View style={s.card}>
+                                    <Text style={s.cardTitle}>Top Topics</Text>
+                                    <View style={s.pieRow}>
+                                        <PieChart data={pieData} donut radius={70} innerRadius={45} centerLabelComponent={() => (
+                                            <View style={{ alignItems: 'center' }}>
+                                                <Text style={{ fontSize: 18, fontWeight: '800', color: '#1A1D2E' }}>{totalTopicCount}</Text>
+                                                <Text style={{ fontSize: 11, color: '#7A8499' }}>Total</Text>
+                                            </View>
+                                        )} isAnimated />
+                                        <View style={{ flex: 1, marginLeft: 20 }}>
+                                            {topTopics.map((item, i) => (
+                                                <View key={i} style={s.legendRow}>
+                                                    <View style={[s.legendDot, { backgroundColor: TOPIC_COLORS[i % TOPIC_COLORS.length] }]} />
+                                                    <Text style={s.legendLabel}>{item.topic}</Text>
+                                                    <Text style={s.legendValue}>{item.count}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Common Words */}
+                        {commonWords.length > 0 && (
+                            <View style={s.px}>
+                                <View style={[s.card, { backgroundColor: '#F5F0FF' }]}>
+                                    <View style={s.cardHeader}>
+                                        <MaterialCommunityIcons name="tag-text" size={18} color="#7B3FE4" />
+                                        <Text style={[s.cardTitle, { marginLeft: 8 }]}>Common Words</Text>
+                                    </View>
+                                    <View style={s.wordCloud}>
+                                        {commonWords.map((item, i) => {
+                                            const size = Math.max(13, Math.min(22, 13 + (item.frequency / commonWords[0].frequency) * 9));
+                                            const colors = ['#4F6BFF', '#7B3FE4', '#059669', '#F59E0B', '#EC4899'];
+                                            return (
+                                                <Text key={i} style={{ fontSize: size, color: colors[i % colors.length], fontWeight: '700', marginRight: 8, marginBottom: 6 }}>
+                                                    {item.word}
+                                                </Text>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Activity Calendar */}
+                        <View style={s.px}>
+                            <View style={s.card}>
+                                <View style={s.cardHeader}>
+                                    <Text style={s.cardTitle}>
+                                        {today.toLocaleString('default', { month: 'long' })} {currentYear}
+                                    </Text>
+                                </View>
+                                <View style={s.calDayRow}>
+                                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                                        <View key={i} style={s.calDayHeader}><Text style={s.calDayText}>{d}</Text></View>
+                                    ))}
+                                </View>
+                                {calendarRows.map((week, wi) => (
+                                    <View key={wi} style={s.calDayRow}>
+                                        {week.map((day, di) => {
+                                            const hasEntry = day !== null && activitySet.has(day);
+                                            const isToday = day === today.getDate();
+                                            return (
+                                                <View key={di} style={[s.calCell, hasEntry && s.calCellActive, isToday && s.calCellToday]}>
+                                                    {day && <Text style={[s.calCellText, hasEntry && { color: '#fff' }]}>{day}</Text>}
+                                                </View>
+                                            );
+                                        })}
                                     </View>
                                 ))}
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Word Cloud Placeholder */}
-                <View className="px-4 mb-6">
-                    <View
-                        className="bg-gradient-to-br bg-blue-50 p-5 rounded-3xl border border-blue-100"
-                        style={{ shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, elevation: 2 }}
-                    >
-                        <View className="flex-row items-center mb-3">
-                            <MaterialCommunityIcons name="tag-text" size={20} color="#3B82F6" />
-                            <Text className="text-lg font-bold text-gray-900 ml-2">Common Words</Text>
-                        </View>
-                        <View className="flex-row flex-wrap gap-2">
-                            {[
-                                { word: 'grateful', size: 'text-xl', color: 'text-blue-600' },
-                                { word: 'family', size: 'text-lg', color: 'text-purple-600' },
-                                { word: 'work', size: 'text-xl', color: 'text-emerald-600' },
-                                { word: 'happy', size: 'text-base', color: 'text-orange-500' },
-                                { word: 'peaceful', size: 'text-sm', color: 'text-pink-500' },
-                                { word: 'growth', size: 'text-lg', color: 'text-blue-600' },
-                                { word: 'learning', size: 'text-base', color: 'text-purple-600' },
-                                { word: 'friends', size: 'text-xl', color: 'text-emerald-600' },
-                                { word: 'health', size: 'text-sm', color: 'text-orange-500' },
-                                { word: 'goals', size: 'text-lg', color: 'text-pink-500' },
-                            ].map((item, index) => (
-                                <Text key={index} className={`${item.size} ${item.color} font-medium`}>
-                                    {item.word}
-                                </Text>
-                            ))}
-                        </View>
-                    </View>
-                </View>
-
-                {/* Journaling Streaks Calendar */}
-                <View className="px-4 mb-6">
-                    <View
-                        className="bg-white p-5 rounded-3xl"
-                        style={{ shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, elevation: 2 }}
-                    >
-                        <View className="flex-row items-center justify-between mb-4">
-                            <Text className="text-lg font-bold text-gray-900">January 2026</Text>
-                            <View className="flex-row gap-2">
-                                <TouchableOpacity className="p-2 bg-gray-100 rounded-full">
-                                    <Ionicons name="chevron-back" size={16} color="#6B7280" />
-                                </TouchableOpacity>
-                                <TouchableOpacity className="p-2 bg-gray-100 rounded-full">
-                                    <Ionicons name="chevron-forward" size={16} color="#6B7280" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {/* Day headers */}
-                        <View className="flex-row justify-between mb-2">
-                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-                                <View key={index} className="w-8 items-center">
-                                    <Text className="text-xs text-gray-400 font-medium">{day}</Text>
+                                <View style={s.calLegend}>
+                                    <View style={s.legendRow}><View style={[s.legendDot, { backgroundColor: '#4F6BFF' }]} /><Text style={s.legendLabel}>Journaled</Text></View>
+                                    <View style={s.legendRow}><View style={[s.legendDot, { backgroundColor: '#E5E8F0' }]} /><Text style={s.legendLabel}>No entry</Text></View>
                                 </View>
-                            ))}
+                            </View>
                         </View>
 
-                        {/* Calendar grid - showing 4 weeks */}
-                        {[
-                            [null, null, null, null, 1, 2, 3],
-                            [4, 5, 6, 7, 8, 9, 10],
-                            [11, 12, 13, 14, 15, 16, 17],
-                            [18, 19, 20, null, null, null, null],
-                        ].map((week, weekIndex) => (
-                            <View key={weekIndex} className="flex-row justify-between mb-2">
-                                {week.map((day, dayIndex) => {
-                                    const hasEntry = day && [1, 2, 3, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(day);
-                                    const isToday = day === 20;
-                                    return (
-                                        <View
-                                            key={dayIndex}
-                                            className={`w-8 h-8 rounded-full items-center justify-center ${hasEntry ? 'bg-blue-500' : day ? 'bg-gray-100' : ''
-                                                } ${isToday ? 'border-2 border-blue-300' : ''}`}
-                                        >
-                                            {day && (
-                                                <Text className={`text-xs font-medium ${hasEntry ? 'text-white' : 'text-gray-600'}`}>
-                                                    {day}
-                                                </Text>
-                                            )}
+                        {/* AI Insights */}
+                        {(aiInsights.length > 0 || appMode !== 'api') && (
+                            <View style={[s.px, { marginBottom: 30 }]}>
+                                <View style={[s.card, { backgroundColor: '#F5F0FF' }]}>
+                                    <View style={s.aiHeader}>
+                                        <View style={s.aiIcon}><MaterialCommunityIcons name="robot-happy" size={22} color="#7B3FE4" /></View>
+                                        <View>
+                                            <Text style={s.aiTitle}>Echo's Insights</Text>
+                                            <Text style={s.aiSub}>AI-powered analysis</Text>
                                         </View>
-                                    );
-                                })}
+                                    </View>
+                                    {(aiInsights.length > 0 ? aiInsights : [
+                                        "📈 Keep journaling consistently to unlock personalized insights!",
+                                        "💡 Try a morning journaling routine for more positive entries."
+                                    ]).map((insight, i) => (
+                                        <View key={i} style={s.insightBubble}>
+                                            <Text style={s.insightText}>{insight}</Text>
+                                        </View>
+                                    ))}
+                                    <TouchableOpacity style={s.insightBtn}>
+                                        <MaterialCommunityIcons name="auto-fix" size={16} color="#fff" />
+                                        <Text style={s.insightBtnText}>Get More Insights</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        ))}
-
-                        {/* Legend */}
-                        <View className="flex-row items-center justify-center mt-4 gap-4">
-                            <View className="flex-row items-center">
-                                <View className="w-3 h-3 rounded-full bg-blue-500 mr-2" />
-                                <Text className="text-xs text-gray-500">Journaled</Text>
-                            </View>
-                            <View className="flex-row items-center">
-                                <View className="w-3 h-3 rounded-full bg-gray-100 mr-2" />
-                                <Text className="text-xs text-gray-500">Missed</Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
-                {/* AI Insights */}
-                <View className="px-4 mb-10">
-                    <View
-                        className="bg-gradient-to-br bg-purple-50 p-5 rounded-3xl border border-purple-100"
-                        style={{ shadowColor: '#8B5CF6', shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 }}
-                    >
-                        <View className="flex-row items-center mb-3">
-                            <View className="w-10 h-10 bg-purple-100 rounded-xl items-center justify-center mr-3">
-                                <MaterialCommunityIcons name="robot-happy" size={22} color="#8B5CF6" />
-                            </View>
-                            <View>
-                                <Text className="text-lg font-bold text-gray-900">Echo's Insights</Text>
-                                <Text className="text-xs text-gray-500">AI-powered analysis</Text>
-                            </View>
-                        </View>
-
-                        <View className="bg-white/60 rounded-2xl p-4 mt-2">
-                            <Text className="text-gray-700 leading-6">
-                                📈 You've been more consistent this week! Your entries show a positive trend in mood, especially when you write about family and gratitude.
-                            </Text>
-                        </View>
-
-                        <View className="bg-white/60 rounded-2xl p-4 mt-3">
-                            <Text className="text-gray-700 leading-6">
-                                💡 Try journaling in the morning - your most positive entries tend to be written before noon.
-                            </Text>
-                        </View>
-
-                        <TouchableOpacity className="flex-row items-center justify-center mt-4 py-3 bg-purple-500 rounded-2xl">
-                            <MaterialCommunityIcons name="auto-fix" size={18} color="white" />
-                            <Text className="text-white font-semibold ml-2">Get More Insights</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                        )}
+                    </>
+                )}
             </ScrollView>
         </SafeAreaView>
     );
 }
+
+const s = StyleSheet.create({
+    safe: { flex: 1, backgroundColor: '#F5F6FA' },
+    loader: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
+    loaderText: { marginTop: 12, fontSize: 14, color: '#7A8499' },
+    header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
+    pageTitle: { fontSize: 26, fontWeight: '800', color: '#1A1D2E' },
+    pageSub: { fontSize: 13, color: '#7A8499', marginTop: 2, marginBottom: 16 },
+    px: { paddingHorizontal: 16, marginBottom: 16 },
+
+    tabRow: { flexDirection: 'row', backgroundColor: '#E9EBFF', borderRadius: 14, padding: 4 },
+    tab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
+    tabActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+    tabText: { fontSize: 13, fontWeight: '600', color: '#7A8499' },
+    tabTextActive: { color: '#4F6BFF' },
+
+    statsRow: { flexDirection: 'row', gap: 10 },
+    statCard: {
+        flex: 1, backgroundColor: '#fff', borderRadius: 18, padding: 14,
+        shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+    },
+    statIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+    statLabel: { fontSize: 11, color: '#7A8499', fontWeight: '600' },
+    statValue: { fontSize: 22, fontWeight: '800', color: '#1A1D2E', marginTop: 2 },
+    statSub: { fontSize: 11, color: '#B0BAD0', marginTop: 2 },
+
+    card: {
+        backgroundColor: '#fff', borderRadius: 24, padding: 18,
+        shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
+    },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+    cardTitle: { fontSize: 17, fontWeight: '800', color: '#1A1D2E' },
+    badge: { marginLeft: 'auto', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+
+    chartAxisText: { color: '#9CA3AF', fontSize: 10 },
+
+    pieRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
+    legendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+    legendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
+    legendLabel: { fontSize: 13, color: '#4A5568', flex: 1 },
+    legendValue: { fontSize: 13, fontWeight: '700', color: '#1A1D2E' },
+
+    wordCloud: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
+
+    calDayRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+    calDayHeader: { width: 36, alignItems: 'center' },
+    calDayText: { fontSize: 11, color: '#B0BAD0', fontWeight: '600' },
+    calCell: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F6FA' },
+    calCellActive: { backgroundColor: '#4F6BFF' },
+    calCellToday: { borderWidth: 2, borderColor: '#4F6BFF' },
+    calCellText: { fontSize: 12, fontWeight: '600', color: '#4A5568' },
+    calLegend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 14 },
+
+    aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+    aiIcon: { width: 42, height: 42, backgroundColor: '#EDE9FF', borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    aiTitle: { fontSize: 17, fontWeight: '800', color: '#1A1D2E' },
+    aiSub: { fontSize: 12, color: '#7A8499' },
+    insightBubble: { backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: 16, padding: 14, marginBottom: 10 },
+    insightText: { fontSize: 14, color: '#4A5568', lineHeight: 21 },
+    insightBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: 8, backgroundColor: '#7B3FE4', borderRadius: 16, paddingVertical: 12, marginTop: 4,
+    },
+    insightBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+});

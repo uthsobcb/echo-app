@@ -1,257 +1,322 @@
+import { useStorage } from '@/context/StorageContext';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-interface SettingItemProps {
+function SettingRow({
+    icon,
+    title,
+    subtitle,
+    rightElement,
+    onPress,
+    showArrow = true,
+}: {
     icon: React.ReactNode;
     title: string;
     subtitle?: string;
     rightElement?: React.ReactNode;
     onPress?: () => void;
     showArrow?: boolean;
-}
-
-function SettingItem({ icon, title, subtitle, rightElement, onPress, showArrow = true }: SettingItemProps) {
+}) {
     return (
-        <TouchableOpacity
-            className="flex-row items-center py-4 px-4 bg-white rounded-2xl mb-3"
-            style={{ shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 }}
-            onPress={onPress}
-            activeOpacity={0.7}
-        >
-            <View className="w-10 h-10 bg-blue-50 rounded-xl items-center justify-center mr-4">
-                {icon}
-            </View>
-            <View className="flex-1">
-                <Text className="text-gray-900 font-semibold text-base">{title}</Text>
-                {subtitle && <Text className="text-gray-500 text-sm mt-0.5">{subtitle}</Text>}
+        <TouchableOpacity style={styles.settingRow} onPress={onPress} activeOpacity={0.7}>
+            <View style={styles.settingIcon}>{icon}</View>
+            <View style={styles.settingText}>
+                <Text style={styles.settingTitle}>{title}</Text>
+                {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
             </View>
             {rightElement}
-            {showArrow && !rightElement && (
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            )}
+            {showArrow && !rightElement && <Ionicons name="chevron-forward" size={18} color="#B0BAD0" />}
         </TouchableOpacity>
     );
 }
 
-import { useStorage } from '@/context/StorageContext';
-import { router } from 'expo-router';
+function SectionLabel({ text }: { text: string }) {
+    return <Text style={styles.sectionLabel}>{text}</Text>;
+}
 
 export default function Profile() {
     const { user, logout, stats, appMode } = useStorage();
     const isLocal = appMode === 'local';
-    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-    const [darkModeEnabled, setDarkModeEnabled] = useState(false);
-    const [reminderEnabled, setReminderEnabled] = useState(true);
+    const [notifications, setNotifications] = useState(true);
+    const [darkMode, setDarkMode] = useState(false);
+    const [reminder, setReminder] = useState(true);
+
+    const switchProps = (value: boolean, onChange: (v: boolean) => void) => ({
+        value,
+        onValueChange: onChange,
+        trackColor: { false: '#E5E8F0', true: '#A5B4FF' },
+        thumbColor: value ? '#4F6BFF' : '#B0BAD0',
+    });
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-            <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+        <SafeAreaView style={styles.safe}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Header */}
-                <View className="px-6 py-4">
-                    <Text className="text-2xl font-bold text-gray-900">Profile</Text>
+                <View style={styles.pageHeader}>
+                    <Text style={styles.pageTitle}>Profile</Text>
                 </View>
+
+                {/* Local mode banner */}
+                {isLocal && (
+                    <View style={styles.localBanner}>
+                        <Ionicons name="cloud-offline-outline" size={22} color="#4F6BFF" />
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                            <Text style={styles.localTitle}>Local Account</Text>
+                            <Text style={styles.localSub}>Data is saved on this device only.</Text>
+                        </View>
+                        <TouchableOpacity
+                            style={styles.syncBtn}
+                            onPress={() => { logout(); router.replace('/(auth)/signin'); }}
+                        >
+                            <Text style={styles.syncBtnText}>Sync</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 {/* Profile Card */}
-                <View className="mx-4 mb-6">
-                    {isLocal && (
-                        <View className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4 flex-row items-center">
-                            <Ionicons name="cloud-offline-outline" size={24} color="#3B82F6" />
-                            <View className="ml-3 flex-1">
-                                <Text className="text-blue-800 font-bold">Local Account</Text>
-                                <Text className="text-blue-600 text-xs">Your data is only saved on this device.</Text>
-                            </View>
-                            <TouchableOpacity
-                                className="bg-blue-500 px-3 py-1.5 rounded-lg"
-                                onPress={() => { logout(); router.replace('/(auth)/signin'); }}
-                            >
-                                <Text className="text-white text-xs font-bold">Sync</Text>
-                            </TouchableOpacity>
+                <LinearGradient colors={['#4F6BFF', '#7B3FE4']} style={styles.profileCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                    <View style={styles.avatarWrap}>
+                        <Image
+                            source={user.image ? { uri: user.image } : user.avatar ? { uri: user.avatar } : require('../../assets/images/avatar.png')}
+                            style={styles.avatarImg}
+                        />
+                        <TouchableOpacity style={styles.cameraBadge}>
+                            <Feather name="camera" size={13} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={styles.profileName}>{user.name}</Text>
+                    <Text style={styles.profileEmail}>{isLocal ? 'Offline Mode' : (user.email || 'Cloud Member')}</Text>
+
+                    {!isLocal && user.subscription && (
+                        <View style={styles.subPill}>
+                            <Text style={styles.subPillText}>{user.subscription.toUpperCase()} MEMBER</Text>
                         </View>
                     )}
-                    <View
-                        className="bg-white rounded-3xl p-6 items-center"
-                        style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 }}
-                    >
-                        <View className="relative">
-                            <Image
-                                source={user.image ? { uri: user.image } : (user.avatar ? { uri: user.avatar } : require('../../assets/images/avatar.png'))}
-                                className="h-24 w-24 rounded-full border-4 border-blue-100"
-                            />
-                            <TouchableOpacity
-                                className="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full"
-                                style={{ shadowColor: '#3b82f6', shadowOpacity: 0.3, shadowRadius: 4, elevation: 3 }}
-                            >
-                                <Feather name="camera" size={14} color="white" />
-                            </TouchableOpacity>
+
+                    {/* Stats */}
+                    <View style={styles.statsRow}>
+                        <View style={styles.statItem}>
+                            <Text style={styles.statValue}>{stats.entries}</Text>
+                            <Text style={styles.statLabel}>Entries</Text>
                         </View>
-                        <Text className="text-xl font-bold text-gray-900 mt-4">{user.name}</Text>
-                        <Text className="text-gray-500 text-sm mt-1">{isLocal ? 'Offline Mode' : (user.email || 'Cloud Member')}</Text>
-
-                        {!isLocal && (
-                            <View className="flex-row items-center mt-2 gap-2">
-                                <View className={`px-3 py-1 rounded-full ${user.subscription === 'admin' ? 'bg-purple-100' : 'bg-emerald-100'}`}>
-                                    <Text className={`text-[10px] font-semibold uppercase ${user.subscription === 'admin' ? 'text-purple-600' : 'text-emerald-600'}`}>
-                                        {user.subscription || 'Free'} Member
-                                    </Text>
-                                </View>
-                            </View>
-                        )}
-
-                        {user.badge && user.badge.length > 0 && (
-                            <View className="flex-row flex-wrap justify-center mt-3 gap-2">
-                                {user.badge.map((badge, idx) => (
-                                    <View key={idx} className="bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
-                                        <Text className="text-amber-700 text-[10px] font-bold">🏅 {badge}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-
-                        {/* Stats Row */}
-                        <View className="flex-row mt-6 pt-6 border-t border-gray-100 w-full">
-                            <View className="flex-1 items-center">
-                                <Text className="text-2xl font-bold text-gray-900">{stats.entries}</Text>
-                                <Text className="text-gray-500 text-xs mt-1">Entries</Text>
-                            </View>
-                            <View className="w-px bg-gray-200" />
-                            <View className="flex-1 items-center">
-                                <Text className="text-2xl font-bold text-gray-900">{stats.streak}</Text>
-                                <Text className="text-gray-500 text-xs mt-1">Day Streak</Text>
-                            </View>
-                            <View className="w-px bg-gray-200" />
-                            <View className="flex-1 items-center">
-                                <Text className="text-2xl font-bold text-gray-900">0</Text>
-                                <Text className="text-gray-500 text-xs mt-1">Awards</Text>
-                            </View>
+                        <View style={styles.statDivider} />
+                        <View style={styles.statItem}>
+                            <Text style={styles.statValue}>{stats.streak}</Text>
+                            <Text style={styles.statLabel}>Streak</Text>
+                        </View>
+                        <View style={styles.statDivider} />
+                        <View style={styles.statItem}>
+                            <Text style={styles.statValue}>{user.badge?.length ?? 0}</Text>
+                            <Text style={styles.statLabel}>Awards</Text>
                         </View>
                     </View>
-                </View>
+                </LinearGradient>
 
-                {/* Account Section */}
-                <View className="px-4 mb-6">
-                    <Text className="text-gray-500 text-sm font-semibold mb-3 ml-2">ACCOUNT</Text>
-                    <SettingItem
-                        icon={<Ionicons name="person-outline" size={20} color="#3b82f6" />}
+                {/* Badges */}
+                {user.badge && user.badge.length > 0 && (
+                    <View style={styles.badgesRow}>
+                        {user.badge.map((b, i) => (
+                            <View key={i} style={styles.badge}>
+                                <Text style={styles.badgeText}>🏅 {b}</Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* Account */}
+                <SectionLabel text="ACCOUNT" />
+                <View style={styles.card}>
+                    <SettingRow
+                        icon={<Ionicons name="person-outline" size={19} color="#4F6BFF" />}
                         title="Edit Profile"
                         subtitle="Update your personal information"
                     />
-                    <SettingItem
-                        icon={<Ionicons name="shield-checkmark-outline" size={20} color="#3b82f6" />}
+                    <View style={styles.divider} />
+                    <SettingRow
+                        icon={<Ionicons name="shield-checkmark-outline" size={19} color="#4F6BFF" />}
                         title="Privacy & Security"
-                        subtitle="Manage your data and privacy"
+                        subtitle="Manage your data"
                     />
-                    <SettingItem
-                        icon={<Ionicons name="card-outline" size={20} color="#3b82f6" />}
+                    <View style={styles.divider} />
+                    <SettingRow
+                        icon={<Ionicons name="card-outline" size={19} color="#4F6BFF" />}
                         title="Subscription"
-                        subtitle="Pro Plan • Renews Jan 2027"
+                        subtitle="Pro Plan · Renews Jan 2027"
                     />
                 </View>
 
-                {/* Preferences Section */}
-                <View className="px-4 mb-6">
-                    <Text className="text-gray-500 text-sm font-semibold mb-3 ml-2">PREFERENCES</Text>
-                    <SettingItem
-                        icon={<Ionicons name="notifications-outline" size={20} color="#3b82f6" />}
+                {/* Preferences */}
+                <SectionLabel text="PREFERENCES" />
+                <View style={styles.card}>
+                    <SettingRow
+                        icon={<Ionicons name="notifications-outline" size={19} color="#4F6BFF" />}
                         title="Notifications"
-                        subtitle="Push notifications"
                         showArrow={false}
-                        rightElement={
-                            <Switch
-                                value={notificationsEnabled}
-                                onValueChange={setNotificationsEnabled}
-                                trackColor={{ false: '#E5E7EB', true: '#93C5FD' }}
-                                thumbColor={notificationsEnabled ? '#3B82F6' : '#9CA3AF'}
-                            />
-                        }
+                        rightElement={<Switch {...switchProps(notifications, setNotifications)} />}
                     />
-                    <SettingItem
-                        icon={<MaterialCommunityIcons name="moon-waning-crescent" size={20} color="#3b82f6" />}
+                    <View style={styles.divider} />
+                    <SettingRow
+                        icon={<MaterialCommunityIcons name="moon-waning-crescent" size={19} color="#4F6BFF" />}
                         title="Dark Mode"
-                        subtitle="Switch to dark theme"
                         showArrow={false}
-                        rightElement={
-                            <Switch
-                                value={darkModeEnabled}
-                                onValueChange={setDarkModeEnabled}
-                                trackColor={{ false: '#E5E7EB', true: '#93C5FD' }}
-                                thumbColor={darkModeEnabled ? '#3B82F6' : '#9CA3AF'}
-                            />
-                        }
+                        rightElement={<Switch {...switchProps(darkMode, setDarkMode)} />}
                     />
-                    <SettingItem
-                        icon={<Ionicons name="alarm-outline" size={20} color="#3b82f6" />}
+                    <View style={styles.divider} />
+                    <SettingRow
+                        icon={<Ionicons name="alarm-outline" size={19} color="#4F6BFF" />}
                         title="Daily Reminder"
-                        subtitle="Get reminded to journal"
+                        subtitle="Remind me to journal"
                         showArrow={false}
-                        rightElement={
-                            <Switch
-                                value={reminderEnabled}
-                                onValueChange={setReminderEnabled}
-                                trackColor={{ false: '#E5E7EB', true: '#93C5FD' }}
-                                thumbColor={reminderEnabled ? '#3B82F6' : '#9CA3AF'}
-                            />
-                        }
+                        rightElement={<Switch {...switchProps(reminder, setReminder)} />}
                     />
                 </View>
 
-                {/* Support Section */}
-                <View className="px-4 mb-6">
-                    <Text className="text-gray-500 text-sm font-semibold mb-3 ml-2">SUPPORT</Text>
-                    <SettingItem
-                        icon={<Ionicons name="help-circle-outline" size={20} color="#3b82f6" />}
-                        title="Help Center"
-                        subtitle="FAQs and support"
-                    />
-                    <SettingItem
-                        icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color="#3b82f6" />}
-                        title="Contact Us"
-                        subtitle="Get in touch with our team"
-                    />
-                    <SettingItem
-                        icon={<Ionicons name="star-outline" size={20} color="#3b82f6" />}
-                        title="Rate the App"
-                        subtitle="Share your feedback"
-                    />
+                {/* Support */}
+                <SectionLabel text="SUPPORT" />
+                <View style={styles.card}>
+                    <SettingRow icon={<Ionicons name="help-circle-outline" size={19} color="#4F6BFF" />} title="Help Center" />
+                    <View style={styles.divider} />
+                    <SettingRow icon={<Ionicons name="chatbubble-ellipses-outline" size={19} color="#4F6BFF" />} title="Contact Us" />
+                    <View style={styles.divider} />
+                    <SettingRow icon={<Ionicons name="star-outline" size={19} color="#4F6BFF" />} title="Rate the App" />
                 </View>
 
-                {/* About Section */}
-                <View className="px-4 mb-6">
-                    <Text className="text-gray-500 text-sm font-semibold mb-3 ml-2">ABOUT</Text>
-                    <SettingItem
-                        icon={<Ionicons name="document-text-outline" size={20} color="#3b82f6" />}
-                        title="Terms of Service"
-                    />
-                    <SettingItem
-                        icon={<Ionicons name="lock-closed-outline" size={20} color="#3b82f6" />}
-                        title="Privacy Policy"
-                    />
-                    <SettingItem
-                        icon={<Ionicons name="information-circle-outline" size={20} color="#3b82f6" />}
-                        title="App Version"
-                        subtitle="1.0.0"
-                        showArrow={false}
-                    />
-                </View>
+                {/* Logout */}
+                <TouchableOpacity
+                    style={styles.logoutBtn}
+                    onPress={() => { logout(); router.replace('/(auth)/signin'); }}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                    <Text style={styles.logoutText}>Log Out</Text>
+                </TouchableOpacity>
 
-                {/* Logout Button */}
-                <View className="px-4 mb-10">
-                    <TouchableOpacity
-                        className="flex-row items-center justify-center py-4 bg-red-50 rounded-2xl"
-                        activeOpacity={0.7}
-                        onPress={() => { logout(); router.replace('/(auth)/signin'); }}
-                    >
-                        <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-                        <Text className="text-red-500 font-semibold text-base ml-2">Log Out</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Footer */}
-                <View className="items-center pb-8">
-                    <Text className="text-gray-400 text-xs">Made with 💙 by Echo Team</Text>
-                </View>
+                <Text style={styles.footer}>Made with 💙 by Echo Team · v1.0.0</Text>
             </ScrollView>
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    safe: { flex: 1, backgroundColor: '#F5F6FA' },
+    scrollContent: { paddingBottom: 40 },
+
+    pageHeader: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16 },
+    pageTitle: { fontSize: 26, fontWeight: '800', color: '#1A1D2E' },
+
+    localBanner: {
+        marginHorizontal: 16,
+        marginBottom: 12,
+        backgroundColor: '#EEF1FF',
+        borderRadius: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
+    },
+    localTitle: { fontSize: 14, fontWeight: '700', color: '#4F6BFF' },
+    localSub: { fontSize: 12, color: '#7A8499', marginTop: 2 },
+    syncBtn: { backgroundColor: '#4F6BFF', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
+    syncBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+    profileCard: {
+        marginHorizontal: 16,
+        borderRadius: 24,
+        padding: 24,
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    avatarWrap: { position: 'relative', marginBottom: 12 },
+    avatarImg: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' },
+    cameraBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        borderRadius: 14,
+        padding: 6,
+    },
+    profileName: { fontSize: 20, fontWeight: '800', color: '#fff' },
+    profileEmail: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
+    subPill: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        marginTop: 8,
+    },
+    subPillText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+    statsRow: {
+        flexDirection: 'row',
+        marginTop: 20,
+        paddingTop: 20,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.2)',
+        width: '100%',
+    },
+    statItem: { flex: 1, alignItems: 'center' },
+    statValue: { fontSize: 24, fontWeight: '800', color: '#fff' },
+    statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+    statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+
+    badgesRow: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: 16, marginBottom: 8, gap: 8 },
+    badge: { backgroundColor: '#FEF3C7', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
+    badgeText: { fontSize: 12, fontWeight: '700', color: '#92400E' },
+
+    sectionLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#7A8499',
+        letterSpacing: 1.2,
+        marginHorizontal: 20,
+        marginTop: 20,
+        marginBottom: 8,
+    },
+    card: {
+        marginHorizontal: 16,
+        backgroundColor: '#fff',
+        borderRadius: 18,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 1,
+    },
+    settingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+    },
+    settingIcon: {
+        width: 36,
+        height: 36,
+        backgroundColor: '#EEF1FF',
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    settingText: { flex: 1 },
+    settingTitle: { fontSize: 15, fontWeight: '600', color: '#1A1D2E' },
+    settingSubtitle: { fontSize: 12, color: '#7A8499', marginTop: 1 },
+    divider: { height: 1, backgroundColor: '#F0F2F8', marginLeft: 64 },
+
+    logoutBtn: {
+        marginHorizontal: 16,
+        marginTop: 24,
+        backgroundColor: '#FEF2F2',
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 15,
+        gap: 8,
+    },
+    logoutText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
+
+    footer: { textAlign: 'center', color: '#B0BAD0', fontSize: 12, marginTop: 24 },
+});

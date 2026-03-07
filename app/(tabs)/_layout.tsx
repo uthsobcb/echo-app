@@ -12,7 +12,7 @@ function TabIcon({
     icon: keyof typeof Ionicons.glyphMap;
     label: string;
 }) {
-    const color = focused ? '#2F6BFF' : '#98A2B3';
+    const color = focused ? '#4F6BFF' : '#B0BAD0';
 
     return (
         <View style={styles.tabItem}>
