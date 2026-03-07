@@ -67,7 +67,15 @@ export default function Journal() {
                             <Ionicons name="chatbubble-ellipses" color="#4F6BFF" size={22} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
-                            <Image source={require('../../assets/images/avatar.png')} style={styles.avatar} />
+                            {user.image || user.avatar ? (
+                                <Image source={{ uri: (user.image || user.avatar) as string }} style={styles.avatar} />
+                            ) : (
+                                <View style={[styles.avatar, { backgroundColor: '#4F6BFF', alignItems: 'center', justifyContent: 'center' }]}>
+                                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+                                        {user.name?.charAt(0)?.toUpperCase() ?? '?'}
+                                    </Text>
+                                </View>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>

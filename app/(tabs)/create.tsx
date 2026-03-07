@@ -26,6 +26,7 @@ export default function Create() {
     const [pendingEntryContent, setPendingEntryContent] = useState<string>('');
     const [initialContent, setInitialContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [aiCommentModal, setAiCommentModal] = useState<string | null>(null);
 
     const contentSetterRef = useRef<React.Dispatch<React.SetStateAction<string>> | null>(null);
 
@@ -55,10 +56,15 @@ export default function Create() {
                 setIsSaving(true);
                 if (entryId) {
                     await updateEntry(entryId, { content });
+                    router.push('/(tabs)');
                 } else {
-                    await addEntry({ content, mood: 'AI' }); // Mood is handled by backend
+                    const newEntry = await addEntry({ content, mood: 'AI' }); // Mood is handled by backend
+                    if (newEntry && newEntry.comment) {
+                        setAiCommentModal(newEntry.comment);
+                    } else {
+                        router.push('/(tabs)');
+                    }
                 }
-                router.push('/(tabs)');
             } catch (error) {
                 console.error("Failed to save entry:", error);
             } finally {
@@ -171,11 +177,12 @@ export default function Create() {
             <JournalEntryBox
                 onSubmit={handleSubmit}
                 initialContent={initialContent}
-                actionLabel={entryId ? "Update Entry" : "Save Entry"}
+                actionLabel={entryId ? "Update" : "Save"}
                 onGetPrompt={handleGetPrompt}
                 onVoiceRecord={handleVoiceRecord}
                 onAttachImage={handleAttachImage}
                 onScanHandwriting={handleScanHandwriting}
+                isSaving={isSaving}
             />
 
             <Modal
@@ -205,6 +212,38 @@ export default function Create() {
                             className="mt-6 self-center"
                         >
                             <Text className="text-gray-500 font-medium">Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* AI Comment Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={!!aiCommentModal}
+                onRequestClose={() => {
+                    setAiCommentModal(null);
+                    router.push('/(tabs)');
+                }}
+            >
+                <View className="flex-1 justify-center items-center bg-black/50">
+                    <View className="bg-white m-5 p-6 rounded-3xl w-[90%] shadow-xl items-center">
+                        <View className="w-16 h-16 rounded-full bg-blue-50 items-center justify-center mb-4">
+                            <Text className="text-3xl">✨</Text>
+                        </View>
+                        <Text className="text-xl font-bold text-center mb-2 text-gray-900">Echo's Insight</Text>
+                        <Text className="text-base text-gray-600 text-center mb-6 leading-6">
+                            {aiCommentModal}
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => {
+                                setAiCommentModal(null);
+                                router.push('/(tabs)');
+                            }}
+                            className="bg-blue-600 px-6 py-3 rounded-2xl w-full items-center"
+                        >
+                            <Text className="text-white font-bold text-base">Done</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

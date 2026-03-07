@@ -4,22 +4,17 @@ import { AuthResponse, Chat, Entry, SpaceDrawStatus, User } from '../types/data'
 const BASE_URL = 'https://www.my-echo.space/api';
 
 async function getHeaders(isMultipart = false) {
-    console.log('API: getHeaders called');
     try {
         const token = await AsyncStorage.getItem('token');
-        console.log('API: Token retrieved from storage:', token ? 'Yes' : 'No');
         const headers: Record<string, string> = {
             'Accept': 'application/json',
         };
-
         if (!isMultipart) {
             headers['Content-Type'] = 'application/json';
         }
-
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
-        console.log('API: Headers constructed');
         return headers;
     } catch (e) {
         console.error('API: Error in getHeaders', e);
@@ -62,22 +57,15 @@ export const api = {
     // Auth
     auth: {
         login: async (credentials: { email: string; password: string }) => {
-            console.log('API: Logging in...');
             try {
-                const headers = await getHeaders();
-                console.log('API: Headers ready, starting fetch...');
-
                 const response = await fetchWithTimeout(`${BASE_URL}/auth/login`, {
                     method: 'POST',
-                    headers: headers,
+                    headers: await getHeaders(),
                     body: JSON.stringify(credentials),
                 });
-                console.log('API: Login Response status:', response.status);
                 const data = await handleResponse(response);
                 if (data.token) {
                     await AsyncStorage.setItem('token', data.token);
-                } else {
-                    console.warn('API: No token in login response');
                 }
                 return data as AuthResponse;
             } catch (e) {
@@ -145,7 +133,7 @@ export const api = {
                 headers: await getHeaders(),
             });
             return handleResponse(response) as Promise<{ mood: string; score: number; _id: string; createdAt: string }[]>;
-        }
+        },
     },
 
     // Entries

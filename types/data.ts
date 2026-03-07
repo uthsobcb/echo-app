@@ -7,6 +7,9 @@ export interface User {
     avatar?: string; // Local URI
     subscription?: 'free' | 'plus' | 'admin';
     badge?: string[];
+    streak?: number;
+    currentStreak?: number;
+    tasks?: number;
     wantsWeeklyReport?: boolean;
     createdAt?: string;
     isLocal?: boolean;
@@ -21,7 +24,7 @@ export interface Entry {
     score?: number;      // 1-10
     comment?: string;
     imgUrl?: string;
-    todo?: string[];
+    todo?: string[] | { todo: string; type?: string; status?: string }[];
     createdAt: number | string; // Timestamp (Local) or ISO date (API)
     date?: string;       // ISO string (Local)
 }

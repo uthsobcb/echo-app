@@ -243,21 +243,18 @@ export default function SignIn() {
                             <View style={styles.dividerLine} />
                         </View>
 
-                        {/* Social Buttons */}
-                        <View style={styles.socialRow}>
-                            <TouchableOpacity
-                                style={styles.socialBtn}
-                                onPress={() => promptAsync()}
-                                disabled={!request || loading}
-                            >
-                                <FontAwesome5 name="google" size={17} color="#EA4335" />
-                                <Text style={styles.socialBtnText}>Google</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.socialBtn}>
-                                <FontAwesome5 name="apple" size={17} color="#1A1D2E" />
-                                <Text style={styles.socialBtnText}>Apple</Text>
-                            </TouchableOpacity>
-                        </View>
+                        {/* Google Sign-In Button */}
+                        <TouchableOpacity
+                            style={styles.googleBtn}
+                            onPress={() => promptAsync()}
+                            disabled={!request || loading}
+                            activeOpacity={0.85}
+                        >
+                            <View style={styles.googleIconWrap}>
+                                <FontAwesome5 name="google" size={18} color="#EA4335" />
+                            </View>
+                            <Text style={styles.googleBtnText}>Continue with Google</Text>
+                        </TouchableOpacity>
 
                         {/* Local Mode */}
                         <View style={styles.localRow}>
@@ -346,13 +343,19 @@ const styles = StyleSheet.create({
     dividerLine: { flex: 1, height: 1, backgroundColor: '#E5E8F0' },
     dividerText: { fontSize: 11, fontWeight: '700', color: '#B0BAD0', letterSpacing: 1 },
 
-    socialRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-    socialBtn: {
-        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: 8, height: 48, borderRadius: 14, borderWidth: 1.5, borderColor: '#E5E8F0',
-        backgroundColor: '#fff',
+    googleBtn: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: '#fff', borderRadius: 14, height: 52,
+        borderWidth: 1.5, borderColor: '#E5E8F0',
+        marginBottom: 20,
+        shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+        overflow: 'hidden',
     },
-    socialBtnText: { fontSize: 14, fontWeight: '600', color: '#1A1D2E' },
+    googleIconWrap: {
+        width: 52, height: 52, alignItems: 'center', justifyContent: 'center',
+        borderRightWidth: 1, borderRightColor: '#E5E8F0', backgroundColor: '#FAFAFA',
+    },
+    googleBtnText: { flex: 1, textAlign: 'center', fontSize: 15, fontWeight: '700', color: '#3C4043' },
 
     localRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
     localDivider: { flex: 1, height: 1, backgroundColor: '#E5E8F0' },

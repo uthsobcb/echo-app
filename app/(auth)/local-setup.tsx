@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -6,33 +7,32 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStorage } from '../../context/StorageContext';
 
-// Local setup screen
+const AVATARS = ['😊', '😎', '🤗', '🎨', '🌙', '🌿', '⚡', '🎭', '🧠', '🌊'];
+
 export default function LocalSetup() {
     const router = useRouter();
     const { loginAsLocal } = useStorage();
     const [name, setName] = useState('');
+    const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
     const [isLoading, setIsLoading] = useState(false);
-
-    // Hardcoded avatars for now - using local assets or could be emojis
-    const avatars = ['😊', '😎', '🤠', '🤓', '🤖', '👽'];
-    const [selectedAvatar, setSelectedAvatar] = useState(avatars[0]);
+    const [focused, setFocused] = useState(false);
 
     const handleStartJourney = async () => {
         if (!name.trim()) return;
-
         setIsLoading(true);
         try {
             await loginAsLocal({
                 name: name.trim(),
-                mood: selectedAvatar + ' Feeling Good', // Default mood
-                avatar: selectedAvatar // Storing emoji as avatar for now for simplicity
+                avatar: selectedAvatar,
             });
             router.replace('/(tabs)');
         } catch (error) {
@@ -43,74 +43,142 @@ export default function LocalSetup() {
     };
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            className="flex-1 bg-white"
-        >
-            <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, justifyContent: 'center' }}>
-                <View className="items-center mb-10">
-                    <View className="h-24 w-24 rounded-full bg-blue-50 items-center justify-center mb-4">
-                        <Text className="text-5xl">{selectedAvatar}</Text>
-                    </View>
-                    <Text className="text-2xl font-bold text-gray-900 text-center">
-                        Welcome to Echo
-                    </Text>
-                    <Text className="text-gray-500 text-center mt-2">
-                        Let's get to know you a little better. All data stays on this device.
-                    </Text>
-                </View>
+        <SafeAreaView style={s.safe}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
+                <ScrollView
+                    contentContainerStyle={s.scroll}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    {/* Hero */}
+                    <LinearGradient colors={['#4F6BFF', '#7B3FE4']} style={s.hero}>
+                        <View style={s.avatarCircle}>
+                            <Text style={s.avatarEmoji}>{selectedAvatar}</Text>
+                        </View>
+                        <Text style={s.heroTitle}>Hey there! 👋</Text>
+                        <Text style={s.heroSub}>Set up your private local journal.</Text>
+                        <Text style={s.heroSub}>Your data stays only on this device.</Text>
+                    </LinearGradient>
 
-                <View className="mb-8">
-                    <Text className="text-sm font-semibold text-gray-700 mb-2">What should we call you?</Text>
-                    <TextInput
-                        className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-lg text-gray-900"
-                        placeholder="Your Name"
-                        value={name}
-                        onChangeText={setName}
-                        autoFocus
-                    />
-                </View>
+                    <View style={s.card}>
+                        {/* Name */}
+                        <Text style={s.label}>What should we call you?</Text>
+                        <View style={[s.inputWrap, focused && s.inputFocused]}>
+                            <MaterialCommunityIcons name="account-outline" size={20} color={focused ? '#4F6BFF' : '#B0BAD0'} />
+                            <TextInput
+                                style={s.input}
+                                placeholder="Your name"
+                                placeholderTextColor="#B0BAD0"
+                                value={name}
+                                onChangeText={setName}
+                                onFocus={() => setFocused(true)}
+                                onBlur={() => setFocused(false)}
+                                autoFocus
+                                returnKeyType="done"
+                            />
+                        </View>
 
-                <View className="mb-10">
-                    <Text className="text-sm font-semibold text-gray-700 mb-4">Choose an Avatar</Text>
-                    <View className="flex-row flex-wrap gap-4 justify-center">
-                        {avatars.map((avatar) => (
-                            <TouchableOpacity
-                                key={avatar}
-                                onPress={() => setSelectedAvatar(avatar)}
-                                className={`h-16 w-16 items-center justify-center rounded-full border-2 ${selectedAvatar === avatar ? 'border-blue-500 bg-blue-50' : 'border-transparent bg-gray-50'
-                                    }`}
+                        {/* Avatar picker */}
+                        <Text style={[s.label, { marginTop: 24 }]}>Pick your vibe</Text>
+                        <View style={s.avatarGrid}>
+                            {AVATARS.map((a) => (
+                                <TouchableOpacity
+                                    key={a}
+                                    onPress={() => setSelectedAvatar(a)}
+                                    style={[s.avatarBtn, selectedAvatar === a && s.avatarBtnActive]}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={s.avatarBtnEmoji}>{a}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* CTA */}
+                        <TouchableOpacity
+                            onPress={handleStartJourney}
+                            disabled={!name.trim() || isLoading}
+                            activeOpacity={0.85}
+                            style={[s.cta, (!name.trim() || isLoading) && s.ctaDisabled]}
+                        >
+                            <LinearGradient
+                                colors={name.trim() ? ['#4F6BFF', '#7B3FE4'] : ['#E5E8F0', '#E5E8F0']}
+                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                style={s.ctaGradient}
                             >
-                                <Text className="text-3xl">{avatar}</Text>
-                            </TouchableOpacity>
-                        ))}
+                                {isLoading ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <>
+                                        <Text style={[s.ctaText, !name.trim() && { color: '#B0BAD0' }]}>Start My Journey</Text>
+                                        <MaterialCommunityIcons name="arrow-right" size={20} color={name.trim() ? '#fff' : '#B0BAD0'} />
+                                    </>
+                                )}
+                            </LinearGradient>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+                            <Text style={s.backText}>← Back to Sign In</Text>
+                        </TouchableOpacity>
                     </View>
-                </View>
-
-                <TouchableOpacity
-                    onPress={handleStartJourney}
-                    disabled={!name.trim() || isLoading}
-                    className={`h-14 rounded-2xl items-center justify-center flex-row shadow-sm ${!name.trim() ? 'bg-gray-300' : 'bg-blue-600'
-                        }`}
-                    style={{ shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 }}
-                >
-                    {isLoading ? (
-                        <ActivityIndicator color="white" />
-                    ) : (
-                        <>
-                            <Text className="text-white font-bold text-lg mr-2">Start Journey</Text>
-                            <MaterialCommunityIcons name="arrow-right" size={20} color="white" />
-                        </>
-                    )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    onPress={() => router.back()}
-                    className="mt-6 items-center"
-                >
-                    <Text className="text-gray-500 font-medium">Go Back</Text>
-                </TouchableOpacity>
-            </ScrollView>
-        </KeyboardAvoidingView>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
+
+const s = StyleSheet.create({
+    safe: { flex: 1, backgroundColor: '#F5F6FA' },
+    scroll: { flexGrow: 1 },
+
+    hero: {
+        paddingTop: 50, paddingBottom: 50, paddingHorizontal: 24,
+        alignItems: 'center',
+    },
+    avatarCircle: {
+        width: 90, height: 90, borderRadius: 45,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center', justifyContent: 'center',
+        marginBottom: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)',
+    },
+    avatarEmoji: { fontSize: 44 },
+    heroTitle: { fontSize: 28, fontWeight: '900', color: '#fff', marginBottom: 6 },
+    heroSub: { fontSize: 14, color: 'rgba(255,255,255,0.75)', textAlign: 'center', lineHeight: 20 },
+
+    card: {
+        backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+        marginTop: -20, padding: 26, paddingBottom: 40, flex: 1,
+    },
+
+    label: { fontSize: 13, fontWeight: '700', color: '#1A1D2E', marginBottom: 10 },
+
+    inputWrap: {
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+        backgroundColor: '#F5F6FA', borderRadius: 14, paddingHorizontal: 14, height: 52,
+        borderWidth: 1.5, borderColor: '#E5E8F0',
+    },
+    inputFocused: { borderColor: '#4F6BFF', backgroundColor: '#F0F3FF' },
+    input: { flex: 1, fontSize: 16, color: '#1A1D2E' },
+
+    avatarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
+    avatarBtn: {
+        width: 56, height: 56, borderRadius: 28,
+        backgroundColor: '#F5F6FA', alignItems: 'center', justifyContent: 'center',
+        borderWidth: 2, borderColor: 'transparent',
+    },
+    avatarBtnActive: { borderColor: '#4F6BFF', backgroundColor: '#EEF1FF' },
+    avatarBtnEmoji: { fontSize: 28 },
+
+    cta: { borderRadius: 16, overflow: 'hidden', marginTop: 28 },
+    ctaDisabled: { opacity: 0.7 },
+    ctaGradient: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        paddingVertical: 16, gap: 8,
+    },
+    ctaText: { fontSize: 16, fontWeight: '800', color: '#fff' },
+
+    backBtn: { marginTop: 18, alignItems: 'center' },
+    backText: { fontSize: 14, color: '#7A8499', fontWeight: '600' },
+});

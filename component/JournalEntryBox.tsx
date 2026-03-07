@@ -1,6 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
 import React, { useEffect, useMemo, useState } from 'react'
 import {
+    ActivityIndicator,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -24,6 +26,7 @@ interface JournalEntryBoxProps {
     placeholder?: string
     initialContent?: string
     actionLabel?: string
+    isSaving?: boolean
 }
 
 export default function JournalEntryBox({
@@ -34,7 +37,8 @@ export default function JournalEntryBox({
     onScanHandwriting,
     placeholder = "What's on your mind today?",
     initialContent = '',
-    actionLabel = 'Save Entry'
+    actionLabel = 'Save',
+    isSaving = false
 }: JournalEntryBoxProps) {
     const [content, setContent] = useState(initialContent)
     const [attachedImage, setAttachedImage] = useState<string | null>(null)
@@ -141,12 +145,39 @@ export default function JournalEntryBox({
                     {/* Page Header */}
                     <View style={styles.pageHeader}>
                         <Text style={styles.pageTitle}>New Entry</Text>
-                        {isSaved && (
-                            <View style={styles.savedBadge}>
-                                <MaterialIcons name="check-circle" size={14} color="#059669" />
-                                <Text style={styles.savedText}>Saved</Text>
-                            </View>
-                        )}
+
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            {isSaved && !isSaving && (
+                                <View style={styles.savedBadge}>
+                                    <MaterialIcons name="check-circle" size={14} color="#059669" />
+                                    <Text style={styles.savedText}>Saved</Text>
+                                </View>
+                            )}
+                            <Pressable
+                                onPress={handleSubmit}
+                                disabled={!isComplete || isSaving}
+                                style={({ pressed }) => [
+                                    { opacity: pressed && isComplete && !isSaving ? 0.8 : 1 }
+                                ]}
+                            >
+                                <LinearGradient
+                                    colors={(!isComplete || isSaving) ? ['#E5E8F0', '#E5E8F0'] : ['#4F6BFF', '#7B3FE4']}
+                                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                    style={styles.saveTopBtn}
+                                >
+                                    {isSaving ? (
+                                        <ActivityIndicator size="small" color={(!isComplete || isSaving) ? '#AAB4C8' : '#fff'} />
+                                    ) : (
+                                        <>
+                                            {isComplete && <MaterialIcons name="auto-awesome" size={14} color="#fff" style={{ marginRight: 4 }} />}
+                                            <Text style={[styles.saveTopText, (!isComplete || isSaving) && styles.saveTopTextDisabled]}>
+                                                {actionLabel}
+                                            </Text>
+                                        </>
+                                    )}
+                                </LinearGradient>
+                            </Pressable>
+                        </View>
                     </View>
 
                     {/* Date */}
@@ -195,7 +226,12 @@ export default function JournalEntryBox({
                                 onPress={action.onPress}
                                 style={({ pressed }) => [
                                     styles.toolBtn,
-                                    { backgroundColor: action.bg, opacity: pressed ? 0.85 : 1 },
+                                    {
+                                        backgroundColor: action.bg,
+                                        opacity: pressed ? 0.85 : 1,
+                                        borderColor: action.active ? action.color : '#E5E8F0',
+                                        borderWidth: 1.5,
+                                    },
                                 ]}
                             >
                                 <MaterialIcons name={action.icon} size={18} color={action.color} />
@@ -203,26 +239,6 @@ export default function JournalEntryBox({
                             </Pressable>
                         ))}
                     </ScrollView>
-
-                    {/* Submit */}
-                    <Pressable
-                        onPress={handleSubmit}
-                        disabled={!isComplete}
-                        style={({ pressed }) => [
-                            styles.submitBtn,
-                            !isComplete && styles.submitBtnDisabled,
-                            { opacity: pressed && isComplete ? 0.9 : 1 },
-                        ]}
-                    >
-                        <MaterialIcons
-                            name={isComplete ? 'check-circle' : 'edit'}
-                            size={20}
-                            color={isComplete ? '#fff' : '#AAB4C8'}
-                        />
-                        <Text style={[styles.submitText, !isComplete && styles.submitTextDisabled]}>
-                            {actionLabel}
-                        </Text>
-                    </Pressable>
                 </ScrollView>
             </View>
         </SafeAreaView>
@@ -246,6 +262,32 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     savedText: { fontSize: 12, fontWeight: '700', color: '#059669' },
+
+    saveTopBtn: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 70,
+        shadowColor: '#4F6BFF',
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 3,
+    },
+    saveTopBtnDisabled: {
+        backgroundColor: '#E5E8F0',
+    },
+    saveTopText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    saveTopTextDisabled: {
+        color: '#AAB4C8',
+    },
 
     dateText: { fontSize: 16, color: '#7A8499', marginBottom: 20, fontFamily: 'Caveat_400Regular' },
 
@@ -293,14 +335,19 @@ const styles = StyleSheet.create({
     },
     readingText: { fontSize: 11, color: '#4F6BFF', fontWeight: '700' },
 
-    toolbar: { paddingBottom: 4, gap: 10, flexDirection: 'row', marginBottom: 24 },
+    toolbar: { paddingBottom: 4, gap: 12, flexDirection: 'row', marginBottom: 24, paddingHorizontal: 4 },
     toolBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        paddingVertical: 11,
-        paddingHorizontal: 16,
-        borderRadius: 14,
+        paddingVertical: 12,
+        paddingHorizontal: 18,
+        borderRadius: 100,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 1,
     },
     toolBtnText: { fontSize: 13, fontWeight: '700' },
 
@@ -314,6 +361,15 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     submitBtnDisabled: { backgroundColor: '#E5E8F0' },
-    submitText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+    submitText: { color: '#fff', fontWeight: '800', fontSize: 16, fontFamily: 'Caveat_700Bold' },
     submitTextDisabled: { color: '#AAB4C8' },
+
+    stickyFooter: {
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        paddingBottom: 20,
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: '#E5E8F0',
+    },
 })

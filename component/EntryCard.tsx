@@ -1,9 +1,8 @@
 import { useStorage } from '@/context/StorageContext';
-import { api } from '@/service/api';
 import { Entry } from '@/types/data';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const THEMES = [
@@ -21,8 +20,6 @@ const getTheme = (id: string) => {
 
 const EntryCard = ({ entry }: { entry?: Entry }) => {
     const { deleteEntry, appMode } = useStorage();
-    const [completedTodos, setCompletedTodos] = useState<string[]>([]);
-
     if (!entry) {
         return (
             <View style={styles.empty}>
@@ -63,24 +60,6 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
         router.push({ pathname: '/(tabs)/create', params: { entryId: id } });
     };
 
-    const handleToggleTodo = async (todo: string) => {
-        const isCompleted = completedTodos.includes(todo);
-        if (isCompleted) {
-            setCompletedTodos(prev => prev.filter(t => t !== todo));
-        } else {
-            setCompletedTodos(prev => [...prev, todo]);
-            if (appMode === 'api') {
-                try {
-                    await api.todo.updateStatus(id, 'done');
-                } catch (e) {
-                    console.error('[Todo] Failed to update status', e);
-                }
-            }
-        }
-    };
-
-    const hasTodos = Array.isArray(entry.todo) && entry.todo.length > 0;
-
     return (
         <TouchableOpacity activeOpacity={0.9} onPress={handleEdit} style={styles.card}>
             {/* Accent bar */}
@@ -118,33 +97,7 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
                     </Text>
                 ) : null}
 
-                {/* To-Do List */}
-                {hasTodos && (
-                    <View style={styles.todoSection}>
-                        <View style={styles.todoHeader}>
-                            <MaterialIcons name="checklist" size={14} color="#7A8499" />
-                            <Text style={styles.todoHeaderText}>TO-DO</Text>
-                        </View>
-                        {entry.todo!.slice(0, 3).map((todo, idx) => {
-                            const done = completedTodos.includes(todo);
-                            return (
-                                <TouchableOpacity
-                                    key={idx}
-                                    style={styles.todoRow}
-                                    onPress={() => handleToggleTodo(todo)}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={[styles.todoCheck, done && { backgroundColor: theme.color, borderColor: theme.color }]}>
-                                        {done && <Ionicons name="checkmark" size={11} color="#fff" />}
-                                    </View>
-                                    <Text style={[styles.todoText, done && styles.todoTextDone]} numberOfLines={1}>
-                                        {todo}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-                )}
+
 
                 {/* Footer */}
                 <View style={styles.footer}>

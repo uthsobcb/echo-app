@@ -1,7 +1,7 @@
 import EntryCard from "@/component/EntryCard";
 import { useStorage } from "@/context/StorageContext";
 import { api } from "@/service/api";
-import { AntDesign, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -22,38 +22,46 @@ export default function Home() {
   const [todos, setTodos] = useState<any[]>([]);
   const [completedTodos, setCompletedTodos] = useState<string[]>([]);
 
+  const [taskCount, setTaskCount] = useState(0);
+
   useEffect(() => {
-    const randomPrompt = dailyPrompt[Math.floor(Math.random() * dailyPrompt.length)];
-    setPrompt(randomPrompt);
+    setPrompt(dailyPrompt[Math.floor(Math.random() * dailyPrompt.length)]);
     if (appMode === 'api') loadTodos();
-  }, []);
+  }, [appMode]);
+
+  // Echo card reads real AI comment from the most recent entry
+  const echoMessage = entries[0]?.comment ||
+    "Journal your thoughts — Echo will analyse your mood and share personalised insights here.";
+  const echoMood = entries[0]?.mood ?? '';
 
   const loadTodos = async () => {
     try {
       const data = await api.todo.getAll();
-      // API returns array of mood objects with todo array inside
-      const allTodos: any[] = [];
-      if (Array.isArray(data)) {
-        data.forEach((item: any) => {
-          if (Array.isArray(item.todo)) {
-            item.todo.forEach((t: string) => allTodos.push({ id: item._id, text: t }));
-          }
-        });
-      }
-      setTodos(allTodos.slice(0, 5));
+      const items = data?.todos || [];
+      const pendingItems = items
+        .filter((t: any) => t.status === 'pending')
+        .map((t: any) => ({
+          id: t._id,
+          text: t.todo
+        }));
+
+      setTaskCount(pendingItems.length);
+      setTodos(pendingItems.slice(0, 4));
     } catch (e) {
       console.error('[Home] Failed to load todos', e);
     }
   };
 
-  const handleToggleTodo = async (todoId: string, todo: string) => {
-    const key = `${todoId} -${todo} `;
-    const isCompleted = completedTodos.includes(key);
-    if (isCompleted) {
-      setCompletedTodos(prev => prev.filter(t => t !== key));
-    } else {
-      setCompletedTodos(prev => [...prev, key]);
-      try { await api.todo.updateStatus(todoId, 'done'); } catch { }
+  const handleToggleTodo = async (todoId: string, todoText: string) => {
+    // Optimistic update
+    setTodos(prev => prev.filter(t => t.text !== todoText));
+    setTaskCount(prev => Math.max(0, prev - 1));
+
+    try {
+      await api.todo.updateStatus(todoId, 'completed');
+    } catch (e) {
+      console.error('[Home] Failed to complete todo', e);
+      loadTodos(); // Revert by reloading
     }
   };
 
@@ -78,10 +86,18 @@ export default function Home() {
               <Ionicons name="chatbubble-ellipses" color="#4F6BFF" size={22} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push("/(tabs)/profile")}>
-              <Image
-                source={require("../../assets/images/avatar.png")}
-                style={styles.avatar}
-              />
+              {user.image || user.avatar ? (
+                <Image
+                  source={{ uri: (user.image || user.avatar) as string }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={[styles.avatar, { backgroundColor: '#4F6BFF', alignItems: 'center', justifyContent: 'center' }]}>
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+                    {user.name?.charAt(0)?.toUpperCase() ?? '?'}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -108,7 +124,7 @@ export default function Home() {
               <View style={styles.streakDivider} />
               <View style={styles.xpBlock}>
                 <Text style={styles.xpLabel}>TASKS</Text>
-                <Text style={styles.xpValue}>{stats.tasks}</Text>
+                <Text style={styles.xpValue}>{taskCount}</Text>
               </View>
             </View>
           </LinearGradient>
@@ -144,16 +160,17 @@ export default function Home() {
               />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.echoTitle}>Echo Says…</Text>
-                {(user as any).mood ? (
+                {(echoMood || (user as any).mood) ? (
                   <View style={styles.moodPill}>
-                    <Text style={styles.moodPillText}>Mood: {(user as any).mood}</Text>
+                    <Text style={styles.moodPillText}>Mood: {echoMood || (user as any).mood}</Text>
                   </View>
                 ) : null}
               </View>
             </View>
             <Text style={styles.echoBody}>
-              It seems you've been feeling a bit low this week. Would you like
-              to talk, or try a quick breathing exercise?
+              {echoMessage ||
+                (entries[0]?.comment) ||
+                "Journal your thoughts — Echo will analyse your mood and share personalised insights here."}
             </Text>
             <View style={styles.echoActions}>
               <TouchableOpacity
@@ -175,37 +192,43 @@ export default function Home() {
         </View>
 
         {/* ── To-Do Widget ── */}
-        {todos.length > 0 && (
-          <View style={styles.px}>
-            <View style={styles.todoCard}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Your To-Dos</Text>
-                <TouchableOpacity>
-                  <Text style={styles.sectionLink}>See all →</Text>
-                </TouchableOpacity>
+        <View style={styles.px}>
+          <View style={styles.todoCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.row}>
+                <Ionicons name="list" size={18} color="#4F6BFF" />
+                <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>Daily Tasks</Text>
               </View>
-              {todos.map((todo, i) => {
-                const key = `${todo.id} -${todo.text} `;
-                const done = completedTodos.includes(key);
-                return (
-                  <TouchableOpacity
-                    key={i}
-                    style={styles.todoRow}
-                    onPress={() => handleToggleTodo(todo.id, todo.text)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.todoCheck, done && styles.todoCheckDone]}>
-                      {done && <MaterialIcons name="check" size={12} color="#fff" />}
-                    </View>
-                    <Text style={[styles.todoText, done && styles.todoTextDone]} numberOfLines={1}>
-                      {todo.text}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              <TouchableOpacity onPress={() => router.push('/todo')}>
+                <Text style={styles.sectionLink}>View All →</Text>
+              </TouchableOpacity>
             </View>
+
+            {todos.length > 0 ? (
+              todos.map((todo, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={styles.todoRow}
+                  onPress={() => handleToggleTodo(todo.id, todo.text)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.todoCheck}>
+                    <Ionicons name="ellipse-outline" size={18} color="#B0BAD0" />
+                  </View>
+                  <Text style={styles.todoText} numberOfLines={1}>
+                    {todo.text}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.todoEmpty}>
+                <Text style={styles.todoEmptyText}>
+                  {appMode === 'api' ? "No pending tasks! Echo extracts these from your journals." : "Switch to Cloud mode to see AI tasks."}
+                </Text>
+              </View>
+            )}
           </View>
-        )}
+        </View>
 
         {/* ── Space Button ── */}
         <View style={styles.px}>
@@ -359,20 +382,43 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: "800", color: "#1A1D2E" },
   sectionLink: { fontSize: 13, color: "#4F6BFF", fontWeight: "600" },
 
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   // To-Do widget
   todoCard: {
     backgroundColor: "#fff", borderRadius: 20, padding: 16, marginBottom: 14,
     borderWidth: 1.5, borderColor: "#E5E8F0",
     shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
   },
-  todoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-  todoCheck: {
-    width: 20, height: 20, borderRadius: 10, borderWidth: 1.5,
-    borderColor: "#B0BAD0", alignItems: "center", justifyContent: "center",
+  todoEmpty: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  todoCheckDone: { backgroundColor: "#4F6BFF", borderColor: "#4F6BFF" },
-  todoText: { fontSize: 14, color: "#1A1D2E", flex: 1 },
-  todoTextDone: { textDecorationLine: "line-through", color: "#B0BAD0" },
+  todoEmptyText: {
+    fontSize: 13,
+    color: '#B0BAD0',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  todoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F2F8",
+  },
+  todoCheck: {
+    marginRight: 10,
+  },
+  todoText: {
+    fontSize: 15,
+    color: "#1A1D2E",
+    fontWeight: "500",
+    flex: 1,
+  },
 
   // Space button
   spaceBtn: {

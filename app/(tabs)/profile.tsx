@@ -3,8 +3,50 @@ import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const ALL_BADGES = [
+    { id: 'Echo Sunshine', name: 'Echo Sunshine', icon: 'sun-wireless', description: 'Unlocked at 1 entry. You started your journey!', color: '#FCD34D', required: 1 },
+    { id: 'Pen Whisperer', name: 'Pen Whisperer', icon: 'feather', description: 'Unlocked at 7 entries. Your thoughts find their voice.', color: '#60A5FA', required: 7 },
+    { id: 'Mindful Scribe', name: 'Mindful Scribe', icon: 'book-open-variant', description: 'Unlocked at 30 entries. A month of deep reflection.', color: '#34D399', required: 30 },
+    { id: 'Thought Architect', name: 'Thought Architect', icon: 'オフィス', description: 'Unlocked at 45 entries. Building a fortress of self-awareness.', color: '#A78BFA', required: 45 },
+    { id: 'Guardian of Inked Wisdom', name: 'Guardian of Inked Wisdom', icon: 'shield-star', description: 'Unlocked at 60 entries. You are a legendary chronicler.', color: '#F87171', required: 60 },
+];
+
+function BadgeDetailModal({ badge, isEarned, onClose, entriesCount }: { badge: typeof ALL_BADGES[0] | null, isEarned: boolean, onClose: () => void, entriesCount: number }) {
+    if (!badge) return null;
+    const remaining = Math.max(0, badge.required - entriesCount);
+    return (
+        <Modal animationType="fade" transparent visible={!!badge} onRequestClose={onClose}>
+            <View style={s.modalOverlay}>
+                <View style={s.modalCard}>
+                    <View style={[s.modalIconBg, { backgroundColor: isEarned ? badge.color + '20' : '#F5F6FA' }]}>
+                        <MaterialCommunityIcons name={badge.icon as any} size={48} color={isEarned ? badge.color : '#B0BAD0'} />
+                    </View>
+                    <Text style={s.modalTitle}>{badge.name}</Text>
+                    <View style={[s.earnStatus, { backgroundColor: isEarned ? '#ECFDF5' : '#FFF7ED' }]}>
+                        <Text style={[s.earnStatusText, { color: isEarned ? '#059669' : '#C2410C' }]}>
+                            {isEarned ? 'EARNED' : `LOCKED`}
+                        </Text>
+                    </View>
+                    <Text style={s.modalDesc}>{badge.description}</Text>
+                    {!isEarned && (
+                        <View style={s.progressRow}>
+                            <View style={s.progressBarBase}>
+                                <View style={[s.progressBarFill, { width: `${Math.min(100, (entriesCount / badge.required) * 100)}%`, backgroundColor: badge.color }]} />
+                            </View>
+                            <Text style={s.progressText}>{entriesCount}/{badge.required}</Text>
+                        </View>
+                    )}
+                    <TouchableOpacity style={s.modalClose} onPress={onClose}>
+                        <Text style={s.modalCloseText}>Got it</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+}
 
 function SettingRow({
     icon,
@@ -44,6 +86,10 @@ export default function Profile() {
     const [notifications, setNotifications] = useState(true);
     const [darkMode, setDarkMode] = useState(false);
     const [reminder, setReminder] = useState(true);
+    const [selectedBadge, setSelectedBadge] = useState<typeof ALL_BADGES[0] | null>(null);
+
+    const earnedBadges = user.badge || [];
+    const entriesCount = stats.entries || 0;
 
     const switchProps = (value: boolean, onChange: (v: boolean) => void) => ({
         value,
@@ -100,7 +146,7 @@ export default function Profile() {
                     {/* Stats */}
                     <View style={styles.statsRow}>
                         <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{stats.entries}</Text>
+                            <Text style={styles.statValue}>{entriesCount}</Text>
                             <Text style={styles.statLabel}>Entries</Text>
                         </View>
                         <View style={styles.statDivider} />
@@ -110,22 +156,60 @@ export default function Profile() {
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{user.badge?.length ?? 0}</Text>
+                            <Text style={styles.statValue}>{earnedBadges.length}</Text>
                             <Text style={styles.statLabel}>Awards</Text>
                         </View>
                     </View>
                 </LinearGradient>
 
-                {/* Badges */}
-                {user.badge && user.badge.length > 0 && (
-                    <View style={styles.badgesRow}>
-                        {user.badge.map((b, i) => (
-                            <View key={i} style={styles.badge}>
-                                <Text style={styles.badgeText}>🏅 {b}</Text>
-                            </View>
-                        ))}
+                {/* Badge Showcase */}
+                <SectionLabel text="BADGE SHOWCASE" />
+                <View style={styles.card}>
+                    <View style={styles.badgeGrid}>
+                        {ALL_BADGES.map((badge) => {
+                            const isEarned = earnedBadges.includes(badge.id);
+                            return (
+                                <TouchableOpacity
+                                    key={badge.id}
+                                    style={styles.badgeItem}
+                                    onPress={() => setSelectedBadge(badge)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[
+                                        styles.badgeIconBg,
+                                        { backgroundColor: isEarned ? badge.color + '20' : '#F5F6FA' }
+                                    ]}>
+                                        <MaterialCommunityIcons
+                                            name={badge.icon as any}
+                                            size={28}
+                                            color={isEarned ? badge.color : '#B0BAD0'}
+                                        />
+                                        {!isEarned && (
+                                            <View style={styles.lockOverlay}>
+                                                <Ionicons name="lock-closed" size={10} color="#fff" />
+                                            </View>
+                                        )}
+                                    </View>
+                                    <Text
+                                        style={[styles.badgeItemName, !isEarned && { color: '#B0BAD0' }]}
+                                        numberOfLines={1}
+                                    >
+                                        {badge.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
-                )}
+                </View>
+
+                {/* Badge Detail Modal */}
+                <BadgeDetailModal
+                    badge={selectedBadge}
+                    isEarned={selectedBadge ? earnedBadges.includes(selectedBadge.id) : false}
+                    entriesCount={entriesCount}
+                    onClose={() => setSelectedBadge(null)}
+                />
+
 
                 {/* Account */}
                 <SectionLabel text="ACCOUNT" />
@@ -319,4 +403,128 @@ const styles = StyleSheet.create({
     logoutText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
 
     footer: { textAlign: 'center', color: '#B0BAD0', fontSize: 12, marginTop: 24 },
+
+    badgeGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        padding: 10,
+        gap: 12,
+        justifyContent: 'center',
+    },
+    badgeItem: {
+        width: '30%',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    badgeIconBg: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+        position: 'relative',
+    },
+    lockOverlay: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        backgroundColor: '#B0BAD0',
+        borderRadius: 10,
+        width: 20,
+        height: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    badgeItemName: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#1A1D2E',
+        textAlign: 'center',
+    },
+
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalCard: {
+        width: '80%',
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        padding: 24,
+        alignItems: 'center',
+    },
+    modalIconBg: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#1A1D2E',
+        marginBottom: 8,
+    },
+    earnStatus: {
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginBottom: 16,
+    },
+    earnStatusText: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1,
+    },
+    modalDesc: {
+        fontSize: 14,
+        color: '#7A8499',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 24,
+    },
+    modalClose: {
+        backgroundColor: '#1A1D2E',
+        paddingHorizontal: 32,
+        paddingVertical: 12,
+        borderRadius: 16,
+    },
+    modalCloseText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 15,
+    },
+    progressRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        width: '100%',
+        marginBottom: 20,
+    },
+    progressBarBase: {
+        flex: 1,
+        height: 6,
+        backgroundColor: '#F0F2F8',
+        borderRadius: 3,
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
+        borderRadius: 3,
+    },
+    progressText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#1A1D2E',
+        minWidth: 40,
+    },
 });
+
+const s = styles;

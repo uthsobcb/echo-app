@@ -18,7 +18,7 @@ interface StorageContextType {
     loginWithGoogle: (idToken: string) => Promise<void>;
     registerAPI: (formData: FormData) => Promise<void>;
     logout: () => Promise<void>;
-    addEntry: (entry: Omit<Entry, 'id' | 'createdAt'>) => Promise<void>;
+    addEntry: (entry: Omit<Entry, 'id' | 'createdAt'>) => Promise<Entry | void>;
     deleteEntry: (id: string) => Promise<void>;
     updateEntry: (id: string, updates: Partial<Entry>) => Promise<void>;
     updateUser: (user: Partial<User>) => Promise<void>;
@@ -64,6 +64,27 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
 
+    // Compute streak from entries: count consecutive days up to today
+    const computeStreak = (entries: Entry[]): number => {
+        if (!entries.length) return 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const uniqueDays = new Set(
+            entries.map(e => {
+                const d = new Date(e.createdAt);
+                d.setHours(0, 0, 0, 0);
+                return d.getTime();
+            })
+        );
+        let streak = 0;
+        let check = today.getTime();
+        while (uniqueDays.has(check)) {
+            streak++;
+            check -= 86400000;
+        }
+        return streak;
+    };
+
     const loadData = async (mode: AppMode) => {
         try {
             if (mode === 'api') {
@@ -76,11 +97,12 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     const entriesData = await api.entries.getAll();
                     setEntries(entriesData);
 
-                    // Map backend data to local stats structure if needed
                     setStats({
                         entries: entriesData.length,
-                        streak: 0, // Backend doesn't explicitly provide streak in /entries
-                        tasks: 0
+                        streak: profileData.user?.streak
+                            ?? profileData.user?.currentStreak
+                            ?? computeStreak(entriesData),
+                        tasks: profileData.user?.tasks ?? 0,
                     });
                 } else {
                     setAppMode('local');
@@ -118,6 +140,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const result = await api.mood.create(newEntryData.content, newEntryData.imgUrl);
             setEntries([result, ...entries]);
             setStats(prev => ({ ...prev, entries: prev.entries + 1 }));
+            return result;
         } else {
             const newEntry: Entry = {
                 ...newEntryData,
@@ -134,6 +157,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
             };
             setStats(updatedStats);
             await saveDataLocal('stats', updatedStats);
+            return newEntry;
         }
     };
 
