@@ -35,6 +35,22 @@ export interface ChatMessage {
     timestamp: string;
 }
 
+export interface LocalMessage {
+    id: string;
+    text: string;
+    sender: 'user' | 'bot';
+    timestamp: number;
+    status?: 'sending' | 'sent' | 'error';
+}
+
+export interface LocalConversation {
+    id: string;
+    title: string;
+    messages: LocalMessage[];
+    createdAt: number;
+    updatedAt: number;
+}
+
 export interface Chat {
     _id: string;
     userId: string;

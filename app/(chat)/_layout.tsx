@@ -1,9 +1,24 @@
-import { Stack } from 'expo-router'
+import { Stack } from 'expo-router';
+import { ChatProvider } from '@/context/ChatContext';
+import { useTheme } from '@/context/ThemeContext';
 
-export default function _layout() {
+function ChatLayout() {
+    const { colors } = useTheme();
+    
     return (
-        <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-        </Stack>
-    )
+        <ChatProvider>
+            <Stack
+                screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.background },
+                    animation: 'slide_from_right',
+                }}
+            >
+                <Stack.Screen name="index" />
+                <Stack.Screen name="chat" />
+            </Stack>
+        </ChatProvider>
+    );
 }
+
+export default ChatLayout;

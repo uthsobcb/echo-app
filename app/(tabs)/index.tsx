@@ -1,27 +1,29 @@
 import EntryCard from "@/component/EntryCard";
 import { useStorage } from "@/context/StorageContext";
+import { useTheme, ThemeColors } from "@/context/ThemeContext";
 import { api } from "@/service/api";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Image,
   ScrollView,
   StyleSheet,
   Text,
+  TextStyle,
   TouchableOpacity,
   View,
+  ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { dailyPrompt } from "./../../constant/const";
 
 export default function Home() {
   const { user, stats, entries, appMode } = useStorage();
+  const { colors } = useTheme();
   const [prompt, setPrompt] = useState("");
   const [todos, setTodos] = useState<any[]>([]);
-  const [completedTodos, setCompletedTodos] = useState<string[]>([]);
-
   const [taskCount, setTaskCount] = useState(0);
 
   useEffect(() => {
@@ -29,7 +31,6 @@ export default function Home() {
     if (appMode === 'api') loadTodos();
   }, [appMode]);
 
-  // Echo card reads real AI comment from the most recent entry
   const echoMessage = entries[0]?.comment ||
     "Journal your thoughts — Echo will analyse your mood and share personalised insights here.";
   const echoMood = entries[0]?.mood ?? '';
@@ -53,7 +54,6 @@ export default function Home() {
   };
 
   const handleToggleTodo = async (todoId: string, todoText: string) => {
-    // Optimistic update
     setTodos(prev => prev.filter(t => t.text !== todoText));
     setTaskCount(prev => Math.max(0, prev - 1));
 
@@ -61,7 +61,7 @@ export default function Home() {
       await api.todo.updateStatus(todoId, 'completed');
     } catch (e) {
       console.error('[Home] Failed to complete todo', e);
-      loadTodos(); // Revert by reloading
+      loadTodos();
     }
   };
 
@@ -72,18 +72,110 @@ export default function Home() {
     return "Good Evening";
   };
 
+  const dynamicStyles = useMemo(() => {
+    const safeArea: ViewStyle = { flex: 1, backgroundColor: colors.background };
+    const scroll: ViewStyle = { flex: 1, backgroundColor: colors.background };
+    const greeting: TextStyle = { fontSize: 14, color: colors.textSecondary, fontWeight: "500" };
+    const userName: TextStyle = { fontSize: 24, fontWeight: "800", color: colors.text };
+    const iconBtn: ViewStyle = {
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 50,
+      padding: 10,
+    };
+    const promptCard: ViewStyle = {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 20,
+      shadowColor: "#4F6BFF",
+      shadowOpacity: 0.08,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: colors.border,
+    };
+    const promptBadgeText: TextStyle = {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.primary,
+      letterSpacing: 1.2,
+    };
+    const promptTitle: TextStyle = { fontSize: 22, fontWeight: "800", color: colors.text, marginBottom: 8 };
+    const promptText: TextStyle = { fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginBottom: 18 };
+    const echoCard: ViewStyle = {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 18,
+      shadowColor: "#000",
+      shadowOpacity: 0.05,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+    };
+    const echoTitle: TextStyle = { fontSize: 16, fontWeight: "700", color: colors.text };
+    const moodPill: ViewStyle = {
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 20,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      alignSelf: "flex-start",
+      marginTop: 4,
+    };
+    const moodPillText: TextStyle = { fontSize: 12, color: colors.primary, fontWeight: "600" };
+    const echoBody: TextStyle = { fontSize: 14, color: colors.textSecondary, lineHeight: 21, marginBottom: 14 };
+    const echoBtnSecondary: ViewStyle = {
+      flex: 1,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 12,
+      paddingVertical: 11,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+    };
+    const echoBtnSecondaryText: TextStyle = { color: colors.primary, fontWeight: "700", fontSize: 14 };
+    const todoCard: ViewStyle = {
+      backgroundColor: colors.surface, borderRadius: 20, padding: 16, marginBottom: 14,
+      borderWidth: 1.5, borderColor: colors.border,
+      shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
+    };
+    const todoEmptyText: TextStyle = {
+      fontSize: 13,
+      color: colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 18,
+    };
+    const todoText: TextStyle = {
+      fontSize: 15,
+      color: colors.text,
+      fontWeight: "500",
+      flex: 1,
+    };
+    const sectionTitle: TextStyle = { fontSize: 18, fontWeight: "800", color: colors.text };
+    const sectionLink: TextStyle = { fontSize: 13, color: colors.primary, fontWeight: "600" };
+    const spaceBtn: ViewStyle = {
+      flexDirection: "row", alignItems: "center", gap: 14,
+      backgroundColor: colors.surface, borderRadius: 20, padding: 16, marginBottom: 14,
+      borderWidth: 1.5, borderColor: colors.border,
+      shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
+    };
+    const spaceBtnTitle: TextStyle = { fontSize: 16, fontWeight: "800", color: colors.text };
+    const spaceBtnSub: TextStyle = { fontSize: 12, color: colors.textSecondary, marginTop: 2 };
+    return { safeArea, scroll, greeting, userName, iconBtn, promptCard, promptBadgeText, promptTitle, promptText, echoCard, echoTitle, moodPill, moodPillText, echoBody, echoBtnSecondary, echoBtnSecondaryText, todoCard, todoEmptyText, todoText, sectionTitle, sectionLink, spaceBtn, spaceBtnTitle, spaceBtnSub };
+  }, [colors]);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
-        {/* ── Header ── */}
+    <SafeAreaView style={dynamicStyles.safeArea}>
+      <ScrollView showsVerticalScrollIndicator={false} style={dynamicStyles.scroll}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>{greeting()},</Text>
-            <Text style={styles.userName}>{user.name} 👋</Text>
+            <Text style={dynamicStyles.greeting}>{greeting()},</Text>
+            <Text style={dynamicStyles.userName}>{user.name} 👋</Text>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => router.push("/(chat)")}>
-              <Ionicons name="chatbubble-ellipses" color="#4F6BFF" size={22} />
+            <TouchableOpacity style={dynamicStyles.iconBtn} onPress={() => router.push("/(chat)")}>
+              <Ionicons name="chatbubble-ellipses" color={colors.primary} size={22} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push("/(tabs)/profile")}>
               {user.image || user.avatar ? (
@@ -92,7 +184,7 @@ export default function Home() {
                   style={styles.avatar}
                 />
               ) : (
-                <View style={[styles.avatar, { backgroundColor: '#4F6BFF', alignItems: 'center', justifyContent: 'center' }]}>
+                <View style={[styles.avatar, { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }]}>
                   <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
                     {user.name?.charAt(0)?.toUpperCase() ?? '?'}
                   </Text>
@@ -102,7 +194,6 @@ export default function Home() {
           </View>
         </View>
 
-        {/* ── Streak / XP Banner ── */}
         <View style={styles.px}>
           <LinearGradient
             colors={["#4F6BFF", "#7B3FE4"]}
@@ -130,15 +221,14 @@ export default function Home() {
           </LinearGradient>
         </View>
 
-        {/* ── Daily Prompt Card ── */}
         <View style={styles.px}>
-          <View style={styles.promptCard}>
+          <View style={dynamicStyles.promptCard}>
             <View style={styles.promptBadge}>
-              <Ionicons name="sparkles" size={13} color="#4F6BFF" />
-              <Text style={styles.promptBadgeText}>DAILY PROMPT</Text>
+              <Ionicons name="sparkles" size={13} color={colors.primary} />
+              <Text style={dynamicStyles.promptBadgeText}>DAILY PROMPT</Text>
             </View>
-            <Text style={styles.promptTitle}>Ready to reflect?</Text>
-            <Text style={styles.promptText}>{prompt}</Text>
+            <Text style={dynamicStyles.promptTitle}>Ready to reflect?</Text>
+            <Text style={dynamicStyles.promptText}>{prompt}</Text>
             <TouchableOpacity
               style={styles.writeBtn}
               onPress={() => router.push("/(tabs)/create")}
@@ -150,24 +240,23 @@ export default function Home() {
           </View>
         </View>
 
-        {/* ── Echo AI Card ── */}
         <View style={styles.px}>
-          <View style={styles.echoCard}>
+          <View style={dynamicStyles.echoCard}>
             <View style={styles.echoHeader}>
               <Image
                 source={require("../../assets/images/frustated-echo.webp")}
                 style={styles.echoImg}
               />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.echoTitle}>Echo Says…</Text>
+                <Text style={dynamicStyles.echoTitle}>Echo Says…</Text>
                 {(echoMood || (user as any).mood) ? (
-                  <View style={styles.moodPill}>
-                    <Text style={styles.moodPillText}>Mood: {echoMood || (user as any).mood}</Text>
+                  <View style={dynamicStyles.moodPill}>
+                    <Text style={dynamicStyles.moodPillText}>Mood: {echoMood || (user as any).mood}</Text>
                   </View>
                 ) : null}
               </View>
             </View>
-            <Text style={styles.echoBody}>
+            <Text style={dynamicStyles.echoBody}>
               {echoMessage ||
                 (entries[0]?.comment) ||
                 "Journal your thoughts — Echo will analyse your mood and share personalised insights here."}
@@ -181,26 +270,25 @@ export default function Home() {
                 <Text style={styles.echoBtnPrimaryText}>✋  Talk</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.echoBtnSecondary}
+                style={dynamicStyles.echoBtnSecondary}
                 onPress={() => router.push("/(meditation)")}
                 activeOpacity={0.85}
               >
-                <Text style={styles.echoBtnSecondaryText}>🧘  Breathe</Text>
+                <Text style={dynamicStyles.echoBtnSecondaryText}>🧘  Breathe</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* ── To-Do Widget ── */}
         <View style={styles.px}>
-          <View style={styles.todoCard}>
+          <View style={dynamicStyles.todoCard}>
             <View style={styles.sectionHeader}>
               <View style={styles.row}>
-                <Ionicons name="list" size={18} color="#4F6BFF" />
-                <Text style={[styles.sectionTitle, { marginLeft: 8 }]}>Daily Tasks</Text>
+                <Ionicons name="list" size={18} color={colors.primary} />
+                <Text style={[dynamicStyles.sectionTitle, { marginLeft: 8 }]}>Daily Tasks</Text>
               </View>
               <TouchableOpacity onPress={() => router.push('/todo')}>
-                <Text style={styles.sectionLink}>View All →</Text>
+                <Text style={dynamicStyles.sectionLink}>View All →</Text>
               </TouchableOpacity>
             </View>
 
@@ -213,16 +301,16 @@ export default function Home() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.todoCheck}>
-                    <Ionicons name="ellipse-outline" size={18} color="#B0BAD0" />
+                    <Ionicons name="ellipse-outline" size={18} color={colors.textSecondary} />
                   </View>
-                  <Text style={styles.todoText} numberOfLines={1}>
+                  <Text style={dynamicStyles.todoText} numberOfLines={1}>
                     {todo.text}
                   </Text>
                 </TouchableOpacity>
               ))
             ) : (
               <View style={styles.todoEmpty}>
-                <Text style={styles.todoEmptyText}>
+                <Text style={dynamicStyles.todoEmptyText}>
                   {appMode === 'api' ? "No pending tasks! Echo extracts these from your journals." : "Switch to Cloud mode to see AI tasks."}
                 </Text>
               </View>
@@ -230,28 +318,26 @@ export default function Home() {
           </View>
         </View>
 
-        {/* ── Space Button ── */}
         <View style={styles.px}>
           <TouchableOpacity
-            style={styles.spaceBtn}
+            style={dynamicStyles.spaceBtn}
             onPress={() => router.push('/(space)')}
             activeOpacity={0.85}
           >
             <Text style={styles.spaceBtnEmoji}>🌌</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.spaceBtnTitle}>Space</Text>
-              <Text style={styles.spaceBtnSub}>Draw a card from the community</Text>
+              <Text style={dynamicStyles.spaceBtnTitle}>Space</Text>
+              <Text style={dynamicStyles.spaceBtnSub}>Draw a card from the community</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#4F6BFF" />
+            <Ionicons name="chevron-forward" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
-        {/* ── Last Entry ── */}
         <View style={[styles.px, styles.lastEntrySection]}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Last Entry</Text>
+            <Text style={dynamicStyles.sectionTitle}>Last Entry</Text>
             <TouchableOpacity onPress={() => router.push("/(tabs)/journal")}>
-              <Text style={styles.sectionLink}>All Entries →</Text>
+              <Text style={dynamicStyles.sectionLink}>All Entries →</Text>
             </TouchableOpacity>
           </View>
           <EntryCard entry={entries[0]} />
@@ -264,11 +350,8 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F5F6FA" },
-  scroll: { flex: 1, backgroundColor: "#F5F6FA" },
   px: { paddingHorizontal: 16, marginBottom: 16 },
 
-  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -277,17 +360,9 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
   },
-  greeting: { fontSize: 14, color: "#7A8499", fontWeight: "500" },
-  userName: { fontSize: 24, fontWeight: "800", color: "#1A1D2E" },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
-  iconBtn: {
-    backgroundColor: "#EEF1FF",
-    borderRadius: 50,
-    padding: 10,
-  },
   avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: "#4F6BFF" },
 
-  // Streak Banner
   streakCard: {
     borderRadius: 20,
     padding: 20,
@@ -301,26 +376,7 @@ const styles = StyleSheet.create({
   xpLabel: { fontSize: 10, color: "rgba(255,255,255,0.65)", fontWeight: "700", letterSpacing: 1 },
   xpValue: { fontSize: 26, fontWeight: "800", color: "#fff", marginTop: 2 },
 
-  // Prompt Card
-  promptCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: "#4F6BFF",
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
   promptBadge: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 10 },
-  promptBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#4F6BFF",
-    letterSpacing: 1.2,
-  },
-  promptTitle: { fontSize: 22, fontWeight: "800", color: "#1A1D2E", marginBottom: 8 },
-  promptText: { fontSize: 15, color: "#7A8499", lineHeight: 22, marginBottom: 18 },
   writeBtn: {
     backgroundColor: "#4F6BFF",
     flexDirection: "row",
@@ -332,30 +388,8 @@ const styles = StyleSheet.create({
   },
   writeBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
-  // Echo Card
-  echoCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
   echoHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   echoImg: { width: 52, height: 52, borderRadius: 12 },
-  echoTitle: { fontSize: 16, fontWeight: "700", color: "#1A1D2E" },
-  moodPill: {
-    backgroundColor: "#EEF1FF",
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    alignSelf: "flex-start",
-    marginTop: 4,
-  },
-  moodPillText: { fontSize: 12, color: "#4F6BFF", fontWeight: "600" },
-  echoBody: { fontSize: 14, color: "#7A8499", lineHeight: 21, marginBottom: 14 },
   echoActions: { flexDirection: "row", gap: 10 },
   echoBtnPrimary: {
     flex: 1,
@@ -365,43 +399,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   echoBtnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  echoBtnSecondary: {
-    flex: 1,
-    backgroundColor: "#F5F6FA",
-    borderRadius: 12,
-    paddingVertical: 11,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E5E8F0",
-  },
-  echoBtnSecondaryText: { color: "#4F6BFF", fontWeight: "700", fontSize: 14 },
 
-  // Last Entry
   lastEntrySection: { marginBottom: 0 },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: "800", color: "#1A1D2E" },
-  sectionLink: { fontSize: 13, color: "#4F6BFF", fontWeight: "600" },
-
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  // To-Do widget
-  todoCard: {
-    backgroundColor: "#fff", borderRadius: 20, padding: 16, marginBottom: 14,
-    borderWidth: 1.5, borderColor: "#E5E8F0",
-    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
   },
   todoEmpty: {
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  todoEmptyText: {
-    fontSize: 13,
-    color: '#B0BAD0',
-    textAlign: 'center',
-    lineHeight: 18,
   },
   todoRow: {
     flexDirection: "row",
@@ -413,21 +421,5 @@ const styles = StyleSheet.create({
   todoCheck: {
     marginRight: 10,
   },
-  todoText: {
-    fontSize: 15,
-    color: "#1A1D2E",
-    fontWeight: "500",
-    flex: 1,
-  },
-
-  // Space button
-  spaceBtn: {
-    flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: "#fff", borderRadius: 20, padding: 16, marginBottom: 14,
-    borderWidth: 1.5, borderColor: "#E5E8F0",
-    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
-  },
   spaceBtnEmoji: { fontSize: 32 },
-  spaceBtnTitle: { fontSize: 16, fontWeight: "800", color: "#1A1D2E" },
-  spaceBtnSub: { fontSize: 12, color: "#7A8499", marginTop: 2 },
 });

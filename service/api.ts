@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthResponse, Chat, Entry, SpaceDrawStatus, User } from '../types/data';
 
-const BASE_URL = 'https://www.my-echo.space/api';
+const BASE_URL = 'https://echo-next.vercel.app/api';
 
 async function getHeaders(isMultipart = false) {
     try {

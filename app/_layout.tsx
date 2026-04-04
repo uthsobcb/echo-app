@@ -1,6 +1,7 @@
 import "../global.css";
 
 import { StorageProvider } from "@/context/StorageContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { scheduleDailyReminder, setupNotifications } from "@/service/NotificationService";
 import {
   Caveat_400Regular,
@@ -40,8 +41,10 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <StorageProvider>
-      <Slot />
-    </StorageProvider>
+    <ThemeProvider>
+      <StorageProvider>
+        <Slot />
+      </StorageProvider>
+    </ThemeProvider>
   );
 }
