@@ -11,7 +11,7 @@ const ALL_BADGES = [
     { id: 'Echo Sunshine', name: 'Echo Sunshine', icon: 'sun-wireless', description: 'Unlocked at 1 entry. You started your journey!', color: '#FCD34D', required: 1 },
     { id: 'Pen Whisperer', name: 'Pen Whisperer', icon: 'feather', description: 'Unlocked at 7 entries. Your thoughts find their voice.', color: '#60A5FA', required: 7 },
     { id: 'Mindful Scribe', name: 'Mindful Scribe', icon: 'book-open-variant', description: 'Unlocked at 30 entries. A month of deep reflection.', color: '#34D399', required: 30 },
-    { id: 'Thought Architect', name: 'Thought Architect', icon: 'オフィス', description: 'Unlocked at 45 entries. Building a fortress of self-awareness.', color: '#A78BFA', required: 45 },
+    { id: 'Thought Architect', name: 'Thought Architect', icon: 'brain', description: 'Unlocked at 45 entries. Building a fortress of self-awareness.', color: '#A78BFA', required: 45 },
     { id: 'Guardian of Inked Wisdom', name: 'Guardian of Inked Wisdom', icon: 'shield-star', description: 'Unlocked at 60 entries. You are a legendary chronicler.', color: '#F87171', required: 60 },
 ];
 

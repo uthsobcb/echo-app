@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 function TabIcon({
     focused,
@@ -12,7 +13,8 @@ function TabIcon({
     icon: keyof typeof Ionicons.glyphMap;
     label: string;
 }) {
-    const color = focused ? '#4F6BFF' : '#B0BAD0';
+    const { colors } = useTheme();
+    const color = focused ? colors.primary : colors.textSecondary;
 
     return (
         <View style={styles.tabItem}>
@@ -33,9 +35,10 @@ function CreateButton({
 }: {
     onPress?: React.ComponentProps<typeof Pressable>['onPress'];
 }) {
+    const { colors } = useTheme();
     return (
         <Pressable onPress={(e) => onPress?.(e)} style={styles.createWrap}>
-            <View style={styles.createBtn}>
+            <View style={[styles.createBtn, { backgroundColor: colors.primary }]}>
                 <Ionicons name="add" size={28} color="#fff" />
             </View>
         </Pressable>
@@ -43,12 +46,14 @@ function CreateButton({
 }
 
 export default function TabsLayout() {
+    const { colors } = useTheme();
+
     return (
         <Tabs
             screenOptions={{
                 headerShown: false,
                 tabBarShowLabel: false,
-                tabBarStyle: styles.tabBar,
+                tabBarStyle: [styles.tabBar, { backgroundColor: colors.surface }],
                 tabBarItemStyle: styles.tabBarItem,
             }}
         >
@@ -105,16 +110,10 @@ const styles = StyleSheet.create({
         paddingTop: 10,
         paddingBottom: 12,
         paddingHorizontal: 14,
-        backgroundColor: '#fff',
         borderTopWidth: 0,
         elevation: 0,
-        shadowColor: '#000',
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: -4 },
     },
 
-    // Give each tab a consistent "slot" width so labels don't wrap
     tabBarItem: {
         flex: 1,
         alignItems: 'center',
@@ -122,17 +121,17 @@ const styles = StyleSheet.create({
     },
 
     tabItem: {
-        width: 72,              // key: stable width so text aligns
+        width: 72,
         alignItems: 'center',
         justifyContent: 'center',
     },
 
     tabLabel: {
         marginTop: 4,
-        fontSize: 11,           // slightly smaller to avoid wrapping
+        fontSize: 11,
         fontWeight: '600',
         textAlign: 'center',
-        includeFontPadding: false, // Android alignment fix
+        includeFontPadding: false,
         lineHeight: 14,
     },
 
@@ -145,13 +144,8 @@ const styles = StyleSheet.create({
         width: 58,
         height: 58,
         borderRadius: 29,
-        backgroundColor: '#0B1220',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOpacity: 0.18,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 6 },
         elevation: 8,
     },
 });

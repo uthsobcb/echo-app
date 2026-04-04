@@ -1,5 +1,6 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const FILTERS = ['All', 'Happy', 'Sad', 'Excited', 'Angry', 'Anxious', 'Grateful', 'Neutral'];
 
@@ -9,12 +10,14 @@ interface FilterProps {
 }
 
 const Filter = ({ selected, onSelect }: FilterProps) => {
+  const { colors } = useTheme();
+  
   return (
-    <View style={styles.container}>
+    <View className="mb-2">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        className="px-4 gap-2"
       >
         {FILTERS.map((item) => {
           const isSelected = item === selected;
@@ -23,9 +26,17 @@ const Filter = ({ selected, onSelect }: FilterProps) => {
               key={item}
               activeOpacity={0.8}
               onPress={() => onSelect(item)}
-              style={[styles.pill, isSelected && styles.pillActive]}
+              className={`px-[18px] py-2 rounded-full ${isSelected ? '' : ''}`}
+              style={{
+                backgroundColor: isSelected ? colors.primary : colors.surface,
+                borderWidth: 1.5,
+                borderColor: isSelected ? colors.primary : colors.border,
+              }}
             >
-              <Text style={[styles.pillText, isSelected && styles.pillTextActive]}>
+              <Text 
+                className="text-[13px] font-semibold"
+                style={{ color: isSelected ? '#fff' : colors.textSecondary }}
+              >
                 {item}
               </Text>
             </TouchableOpacity>
@@ -37,22 +48,3 @@ const Filter = ({ selected, onSelect }: FilterProps) => {
 };
 
 export default Filter;
-
-const styles = StyleSheet.create({
-  container: { marginBottom: 8 },
-  scroll: { paddingHorizontal: 16, gap: 8, flexDirection: 'row' },
-  pill: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#E5E8F0',
-  },
-  pillActive: {
-    backgroundColor: '#4F6BFF',
-    borderColor: '#4F6BFF',
-  },
-  pillText: { fontSize: 13, fontWeight: '600', color: '#7A8499' },
-  pillTextActive: { color: '#fff' },
-});

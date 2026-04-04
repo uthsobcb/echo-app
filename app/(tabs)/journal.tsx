@@ -6,29 +6,28 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Entry } from '../../types/data';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function Journal() {
     const { user, entries: ctxEntries, appMode } = useStorage();
+    const { colors, isDark } = useTheme();
     const [selectedFilter, setSelectedFilter] = useState('All');
     const [search, setSearch] = useState('');
     const [entries, setEntries] = useState<Entry[]>(ctxEntries);
     const [loading, setLoading] = useState(false);
 
-    // Sync from context when no active search/filter
     useEffect(() => {
         if (!search && selectedFilter === 'All') {
             setEntries(ctxEntries);
         }
     }, [ctxEntries]);
 
-    // Re-fetch / filter when search or mood filter changes
     useEffect(() => {
         const fetchFiltered = async () => {
             if (appMode !== 'api') {
-                // Local mode: do client-side filter
                 const filtered = ctxEntries.filter((e) => {
                     const moodMatch = selectedFilter === 'All' || e.mood?.toLowerCase().includes(selectedFilter.toLowerCase());
                     const searchMatch = !search || e.content?.toLowerCase().includes(search.toLowerCase());
@@ -49,29 +48,32 @@ export default function Journal() {
             }
         };
 
-        const timer = setTimeout(fetchFiltered, 300); // debounce search
+        const timer = setTimeout(fetchFiltered, 300);
         return () => clearTimeout(timer);
     }, [search, selectedFilter, appMode]);
 
     return (
-        <LinearGradient colors={['#F5F6FA', '#EEF1FF']} style={{ flex: 1 }}>
-            <SafeAreaView style={{ flex: 1 }}>
-                {/* Header */}
-                <View style={styles.header}>
+        <LinearGradient colors={isDark ? ['#0F1117', '#1A1D2E'] : ['#F5F6FA', '#EEF1FF']} className="flex-1">
+            <SafeAreaView className="flex-1">
+                <View className="flex-row items-center justify-between px-4 pt-2 pb-3">
                     <View>
-                        <Text style={styles.pageTitle}>My Journal</Text>
-                        <Text style={styles.pageSub}>{entries.length} entries</Text>
+                        <Text className="text-[26px] font-extrabold" style={{ color: colors.text }}>My Journal</Text>
+                        <Text className="text-[13px] mt-0.5" style={{ color: colors.textSecondary }}>{entries.length} entries</Text>
                     </View>
-                    <View style={styles.headerRight}>
-                        <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/(chat)')}>
-                            <Ionicons name="chatbubble-ellipses" color="#4F6BFF" size={22} />
+                    <View className="flex-row items-center gap-2.5">
+                        <TouchableOpacity 
+                            className="rounded-[50] p-2.5"
+                            style={{ backgroundColor: colors.surfaceSecondary }}
+                            onPress={() => router.push('/(chat)')}
+                        >
+                            <Ionicons name="chatbubble-ellipses" color={colors.primary} size={22} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
                             {user.image || user.avatar ? (
-                                <Image source={{ uri: (user.image || user.avatar) as string }} style={styles.avatar} />
+                                <Image source={{ uri: (user.image || user.avatar) as string }} className="w-11 h-11 rounded-[22] border-2" style={{ borderColor: colors.primary }} />
                             ) : (
-                                <View style={[styles.avatar, { backgroundColor: '#4F6BFF', alignItems: 'center', justifyContent: 'center' }]}>
-                                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+                                <View className="w-11 h-11 rounded-[22] border-2 items-center justify-center" style={{ backgroundColor: colors.primary, borderColor: colors.primary }}>
+                                    <Text className="text-white font-extrabold text-base">
                                         {user.name?.charAt(0)?.toUpperCase() ?? '?'}
                                     </Text>
                                 </View>
@@ -80,59 +82,64 @@ export default function Journal() {
                     </View>
                 </View>
 
-                {/* Search Bar */}
-                <View style={styles.searchWrap}>
-                    <View style={styles.searchBox}>
-                        <Ionicons name="search-outline" size={18} color="#B0BAD0" />
+                <View className="px-4 mb-2.5">
+                    <View 
+                        className="flex-row items-center rounded-3xl px-3.5 py-2.5 gap-2"
+                        style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1.5 }}
+                    >
+                        <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
                         <TextInput
-                            style={styles.searchInput}
+                            className="flex-1 text-sm"
+                            style={{ color: colors.text }}
                             placeholder="Search entries..."
-                            placeholderTextColor="#B0BAD0"
+                            placeholderTextColor={colors.textSecondary}
                             value={search}
                             onChangeText={setSearch}
                         />
                         {search.length > 0 && (
                             <TouchableOpacity onPress={() => setSearch('')}>
-                                <Ionicons name="close-circle" size={18} color="#B0BAD0" />
+                                <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
                             </TouchableOpacity>
                         )}
                     </View>
                 </View>
 
-                {/* Filter */}
                 <Filter selected={selectedFilter} onSelect={setSelectedFilter} />
 
-                {/* Entry List */}
                 {loading ? (
-                    <View style={styles.loaderWrap}>
-                        <ActivityIndicator size="large" color="#4F6BFF" />
+                    <View className="flex-1 items-center justify-center">
+                        <ActivityIndicator size="large" color={colors.primary} />
                     </View>
                 ) : (
                     <FlatList
                         data={entries}
                         keyExtractor={(item) => item.id || item._id || Math.random().toString()}
                         renderItem={({ item }) => (
-                            <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+                            <View className="px-4 mb-3">
                                 <EntryCard entry={item} />
                             </View>
                         )}
-                        contentContainerStyle={{ paddingBottom: 24, paddingTop: 8 }}
+                        contentContainerStyle={{ paddingBottom: 6, paddingTop: 2 }}
                         ListEmptyComponent={() => (
-                            <View style={styles.empty}>
-                                <Text style={styles.emptyEmoji}>
+                            <View className="items-center pt-16 px-8">
+                                <Text className="text-[52px] mb-4">
                                     {selectedFilter === 'All' ? '📖' : '🔍'}
                                 </Text>
-                                <Text style={styles.emptyTitle}>
+                                <Text className="text-xl font-extrabold mb-2" style={{ color: colors.text }}>
                                     {selectedFilter === 'All' ? 'No entries yet' : `No "${selectedFilter}" entries`}
                                 </Text>
-                                <Text style={styles.emptySub}>
+                                <Text className="text-sm text-center leading-[21px] mb-6" style={{ color: colors.textSecondary }}>
                                     {selectedFilter === 'All'
                                         ? 'Start your journaling journey today!'
                                         : 'Try a different mood filter'}
                                 </Text>
                                 {selectedFilter === 'All' && (
-                                    <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/(tabs)/create')}>
-                                        <Text style={styles.emptyBtnText}>Write First Entry</Text>
+                                    <TouchableOpacity 
+                                        className="rounded-2xl px-7 py-3.5"
+                                        style={{ backgroundColor: colors.primary }}
+                                        onPress={() => router.push('/(tabs)/create')}
+                                    >
+                                        <Text className="text-white font-bold text-[15px]">Write First Entry</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -143,33 +150,3 @@ export default function Journal() {
         </LinearGradient>
     );
 }
-
-const styles = StyleSheet.create({
-    header: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12,
-    },
-    pageTitle: { fontSize: 26, fontWeight: '800', color: '#1A1D2E' },
-    pageSub: { fontSize: 13, color: '#7A8499', marginTop: 2 },
-    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    iconBtn: { backgroundColor: '#EEF1FF', borderRadius: 50, padding: 10 },
-    avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: '#4F6BFF' },
-
-    searchWrap: { paddingHorizontal: 16, marginBottom: 10 },
-    searchBox: {
-        flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
-        borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, gap: 8,
-        borderWidth: 1.5, borderColor: '#E5E8F0',
-        shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,
-    },
-    searchInput: { flex: 1, fontSize: 14, color: '#1A1D2E' },
-
-    loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
-    empty: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
-    emptyEmoji: { fontSize: 52, marginBottom: 16 },
-    emptyTitle: { fontSize: 20, fontWeight: '800', color: '#1A1D2E', marginBottom: 8 },
-    emptySub: { fontSize: 14, color: '#7A8499', textAlign: 'center', lineHeight: 21, marginBottom: 24 },
-    emptyBtn: { backgroundColor: '#4F6BFF', borderRadius: 14, paddingHorizontal: 28, paddingVertical: 13 },
-    emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-});
