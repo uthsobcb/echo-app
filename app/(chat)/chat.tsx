@@ -1,23 +1,10 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-    ViewStyle,
-    TextStyle,
-} from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useChat } from '../../context/ChatContext';
-import { useTheme, ThemeColors } from '../../context/ThemeContext';
-import { LocalMessage } from '../../types/data';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function ChatDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,7 +16,6 @@ export default function ChatDetailScreen() {
         sendMessage, 
         isSending,
         deleteConversation,
-        updateConversationTitle,
     } = useChat();
     const router = useRouter();
     
@@ -97,186 +83,40 @@ export default function ChatDetailScreen() {
         });
     };
 
-    const styles = useMemo(() => ({
-        container: { flex: 1, backgroundColor: colors.background } as ViewStyle,
-        header: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 8,
-            paddingVertical: 12,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-            backgroundColor: colors.surface,
-        } as ViewStyle,
-        headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 } as ViewStyle,
-        backBtn: { padding: 8 } as ViewStyle,
-        headerTitle: { fontSize: 17, fontWeight: '600', color: colors.text, marginLeft: 4 } as TextStyle,
-        headerRight: { flexDirection: 'row', alignItems: 'center' } as ViewStyle,
-        menuBtn: { padding: 8 } as ViewStyle,
-        messagesContainer: { flex: 1, paddingHorizontal: 16, paddingVertical: 16 } as ViewStyle,
-        messageWrapper: {
-            flexDirection: 'row',
-            marginBottom: 16,
-            alignItems: 'flex-end',
-        } as ViewStyle,
-        messageWrapperUser: { justifyContent: 'flex-end' } as ViewStyle,
-        messageWrapperBot: { justifyContent: 'flex-start' } as ViewStyle,
-        botAvatar: {
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            backgroundColor: colors.primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 8,
-        } as ViewStyle,
-        userAvatar: {
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            backgroundColor: colors.textSecondary,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginLeft: 8,
-        } as ViewStyle,
-        messageBubble: {
-            maxWidth: '75%',
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            borderRadius: 18,
-        } as ViewStyle,
-        userBubble: {
-            backgroundColor: colors.primary,
-            borderBottomRightRadius: 4,
-        } as ViewStyle,
-        botBubble: {
-            backgroundColor: colors.surfaceSecondary,
-            borderBottomLeftRadius: 4,
-        } as ViewStyle,
-        errorBubble: {
-            backgroundColor: '#FEE2E2',
-            borderWidth: 1,
-            borderColor: '#EF4444',
-        } as ViewStyle,
-        messageText: { fontSize: 15, lineHeight: 21 } as TextStyle,
-        userText: { color: '#fff' } as TextStyle,
-        botText: { color: colors.text } as TextStyle,
-        messageTime: { 
-            fontSize: 10, 
-            color: colors.textSecondary, 
-            marginTop: 4 
-        } as TextStyle,
-        userTime: { color: 'rgba(255,255,255,0.7)' } as TextStyle,
-        inputContainer: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            backgroundColor: colors.surface,
-        } as ViewStyle,
-        inputWrapper: {
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.surfaceSecondary,
-            borderRadius: 24,
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            borderWidth: 1,
-            borderColor: colors.border,
-        } as ViewStyle,
-        input: {
-            flex: 1,
-            fontSize: 15,
-            color: colors.text,
-            maxHeight: 100,
-        } as TextStyle,
-        sendBtn: {
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            backgroundColor: colors.primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginLeft: 8,
-        } as ViewStyle,
-        sendBtnDisabled: { backgroundColor: colors.border } as ViewStyle,
-        typingIndicator: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            backgroundColor: colors.surfaceSecondary,
-            borderRadius: 18,
-            borderBottomLeftRadius: 4,
-            marginBottom: 16,
-            alignSelf: 'flex-start',
-        } as ViewStyle,
-        typingDot: {
-            width: 6,
-            height: 6,
-            borderRadius: 3,
-            backgroundColor: colors.textSecondary,
-            marginHorizontal: 2,
-        } as ViewStyle,
-        emptyContainer: {
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: 40,
-        } as ViewStyle,
-        emptyText: {
-            fontSize: 16,
-            color: colors.textSecondary,
-            textAlign: 'center',
-        } as TextStyle,
-        retryBtn: {
-            marginTop: 4,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-        } as ViewStyle,
-        retryText: { fontSize: 12, color: '#EF4444' } as TextStyle,
-    }), [colors]);
-
     if (!conversation) {
         return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.header}>
-                    <TouchableOpacity style={styles.headerLeft} onPress={() => router.back()}>
+            <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
+                <View className="flex-row items-center px-2 py-3 border-b" style={{ borderBottomColor: colors.border, backgroundColor: colors.surface }}>
+                    <TouchableOpacity
+                        className="flex-row items-center flex-1"
+                        onPress={() => router.back()}
+                    >
                         <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text} />
-                        <Text style={styles.headerTitle}>Chat</Text>
+                        <Text className="text-base font-semibold ml-1" style={{ color: colors.text }}>Chat</Text>
                     </TouchableOpacity>
                 </View>
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>Conversation not found</Text>
+                <View className="flex-1 items-center justify-center px-10">
+                    <Text className="text-base text-center" style={{ color: colors.textSecondary }}>Conversation not found</Text>
                 </View>
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <Stack.Screen 
-                options={{
-                    headerShown: false,
-                }} 
-            />
+        <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }} edges={['top']}>
+            <Stack.Screen options={{ headerShown: false }} />
             
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <View className="flex-row items-center justify-between px-2 py-3 border-b" style={{ borderBottomColor: colors.border, backgroundColor: colors.surface }}>
+                <View className="flex-row items-center flex-1">
+                    <TouchableOpacity className="p-2" onPress={() => router.back()}>
                         <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle} numberOfLines={1}>
+                    <Text className="text-base font-semibold" style={{ color: colors.text }} numberOfLines={1}>
                         {conversation.title}
                     </Text>
                 </View>
-                <View style={styles.headerRight}>
-                    <TouchableOpacity style={styles.menuBtn} onPress={handleDelete}>
+                <View className="flex-row items-center">
+                    <TouchableOpacity className="p-2" onPress={handleDelete}>
                         <MaterialCommunityIcons name="trash-can-outline" size={22} color={colors.text} />
                     </TouchableOpacity>
                 </View>
@@ -284,7 +124,7 @@ export default function ChatDetailScreen() {
 
             <ScrollView
                 ref={scrollViewRef}
-                style={styles.messagesContainer}
+                className="flex-1 px-4 py-4"
                 contentContainerStyle={{ paddingBottom: 8 }}
                 showsVerticalScrollIndicator={false}
                 onContentSizeChange={() => {
@@ -294,37 +134,44 @@ export default function ChatDetailScreen() {
                 {conversation.messages.map((message) => (
                     <View
                         key={message.id}
-                        style={[
-                            styles.messageWrapper,
-                            message.sender === 'user' ? styles.messageWrapperUser : styles.messageWrapperBot,
-                        ]}
+                        className={`flex-row mb-4 ${message.sender === 'user' ? 'justify-end' : 'justify-start'} items-end`}
                     >
                         {message.sender === 'bot' && (
-                            <View style={styles.botAvatar}>
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center mr-2"
+                                style={{ backgroundColor: colors.primary }}
+                            >
                                 <MaterialCommunityIcons name="robot" size={16} color="#fff" />
                             </View>
                         )}
                         
                         <View
-                            style={[
-                                styles.messageBubble,
-                                message.sender === 'user' ? styles.userBubble : styles.botBubble,
-                                message.status === 'error' && styles.errorBubble,
-                            ]}
+                            className={`max-w-[75%] px-3.5 py-2.5 rounded-[18px] ${
+                                message.sender === 'user' ? 'rounded-br-[4px]' : 'rounded-bl-[4px]'
+                            }`}
+                            style={{
+                                backgroundColor: message.sender === 'user' 
+                                    ? colors.primary 
+                                    : message.status === 'error'
+                                        ? '#FEE2E2'
+                                        : colors.surfaceSecondary,
+                                borderColor: message.status === 'error' ? '#EF4444' : 'transparent',
+                                borderWidth: message.status === 'error' ? 1 : 0,
+                            }}
                         >
                             <Text
-                                style={[
-                                    styles.messageText,
-                                    message.sender === 'user' ? styles.userText : styles.botText,
-                                ]}
+                                className="text-sm leading-5"
+                                style={{
+                                    color: message.sender === 'user' ? '#fff' : colors.text,
+                                }}
                             >
                                 {message.text}
                             </Text>
                             <Text
-                                style={[
-                                    styles.messageTime,
-                                    message.sender === 'user' && styles.userTime,
-                                ]}
+                                className="text-[10px] mt-1"
+                                style={{
+                                    color: message.sender === 'user' ? 'rgba(255,255,255,0.7)' : colors.textSecondary,
+                                }}
                             >
                                 {formatTime(message.timestamp)}
                                 {message.status === 'sending' && ' • Sending...'}
@@ -332,17 +179,20 @@ export default function ChatDetailScreen() {
                             </Text>
                             {message.status === 'error' && (
                                 <TouchableOpacity 
-                                    style={styles.retryBtn}
+                                    className="flex-row items-center mt-1"
                                     onPress={() => handleRetry(message.id)}
                                 >
                                     <MaterialCommunityIcons name="refresh" size={12} color="#EF4444" />
-                                    <Text style={styles.retryText}>Tap to retry</Text>
+                                    <Text className="text-xs ml-1" style={{ color: '#EF4444' }}>Tap to retry</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
 
                         {message.sender === 'user' && (
-                            <View style={styles.userAvatar}>
+                            <View
+                                className="w-8 h-8 rounded-full items-center justify-center ml-2"
+                                style={{ backgroundColor: colors.textSecondary }}
+                            >
                                 <MaterialCommunityIcons name="account" size={18} color="#fff" />
                             </View>
                         )}
@@ -350,10 +200,13 @@ export default function ChatDetailScreen() {
                 ))}
 
                 {isSending && (
-                    <View style={styles.typingIndicator}>
-                        <View style={styles.typingDot} />
-                        <View style={[styles.typingDot, { marginLeft: 4 }]} />
-                        <View style={[styles.typingDot, { marginLeft: 4 }]} />
+                    <View 
+                        className="flex-row items-center px-3.5 py-2.5 rounded-[18px] rounded-bl-[4px] mb-4 self-start"
+                        style={{ backgroundColor: colors.surfaceSecondary }}
+                    >
+                        <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.textSecondary }} />
+                        <View className="w-1.5 h-1.5 rounded-full ml-1" style={{ backgroundColor: colors.textSecondary }} />
+                        <View className="w-1.5 h-1.5 rounded-full ml-1" style={{ backgroundColor: colors.textSecondary }} />
                     </View>
                 )}
             </ScrollView>
@@ -362,10 +215,14 @@ export default function ChatDetailScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={0}
             >
-                <View style={styles.inputContainer}>
-                    <View style={styles.inputWrapper}>
+                <View className="flex-row items-center px-4 py-3 border-t" style={{ borderTopColor: colors.border, backgroundColor: colors.surface }}>
+                    <View 
+                        className="flex-1 flex-row items-center rounded-full px-4 py-2"
+                        style={{ backgroundColor: colors.surfaceSecondary, borderColor: colors.border, borderWidth: 1 }}
+                    >
                         <TextInput
-                            style={styles.input}
+                            className="flex-1 text-sm"
+                            style={{ color: colors.text, maxHeight: 100 }}
                             value={inputText}
                             onChangeText={setInputText}
                             placeholder="Type a message..."
@@ -374,15 +231,15 @@ export default function ChatDetailScreen() {
                             maxLength={500}
                             editable={!isSending}
                         />
-                        <Text style={{ fontSize: 11, color: colors.textSecondary }}>
+                        <Text className="text-[11px]" style={{ color: colors.textSecondary }}>
                             {inputText.length}/500
                         </Text>
                     </View>
                     <TouchableOpacity
-                        style={[
-                            styles.sendBtn,
-                            (!inputText.trim() || isSending) && styles.sendBtnDisabled,
-                        ]}
+                        className="w-11 h-11 rounded-full items-center justify-center ml-2"
+                        style={{
+                            backgroundColor: (!inputText.trim() || isSending) ? colors.border : colors.primary,
+                        }}
                         onPress={handleSend}
                         disabled={!inputText.trim() || isSending}
                     >
