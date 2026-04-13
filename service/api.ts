@@ -50,7 +50,12 @@ const handleResponse = async (response: Response) => {
     const data = await response.json();
     if (!response.ok) {
         logger.error('API Error:', data);
-        throw new Error(data.message || data.error || 'Something went wrong');
+        // Extract a readable message — error can be a string or a nested object
+        const msg =
+            data.message ||
+            (typeof data.error === 'string' ? data.error : data.error?.message) ||
+            `Request failed (${response.status})`;
+        throw new Error(msg);
     }
     return data;
 };
@@ -148,7 +153,10 @@ export const api = {
             const response = await fetch(url, {
                 headers: await getHeaders(),
             });
-            return handleResponse(response) as Promise<Entry[]>;
+            const data = await handleResponse(response);
+            // API may return { entries: [...] }, { moods: [...] }, or a bare array
+            const entries = Array.isArray(data) ? data : (data.entries || data.moods || []);
+            return entries as Entry[];
         },
         getById: async (id: string) => {
             const response = await fetch(`${BASE_URL}/entries/${id}`, {

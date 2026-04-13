@@ -136,6 +136,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentConversationId(null);
     }, []);
 
+    // Check if a local ID is a temporary one (not a real backend ID)
+    const isLocalId = (id: string) => /^\d+$/.test(id);
+
     const sendMessage = useCallback(async (text: string, conversationId?: string) => {
         const targetId = conversationId || currentConversationId;
         if (!targetId) {
@@ -153,19 +156,20 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         // Add user message immediately
-        const updated = conversations.map(c => 
-            c.id === targetId 
-                ? { ...c, messages: [...c.messages, userMessage], updatedAt: Date.now() } 
+        setConversations(prev => prev.map(c =>
+            c.id === targetId
+                ? { ...c, messages: [...c.messages, userMessage], updatedAt: Date.now() }
                 : c
-        );
-        setConversations(updated);
-        
+        ));
+
         setIsSending(true);
         setError(null);
 
         try {
-            const result = await api.chat.sendMessage(text, targetId);
-            
+            // Don't send local temp IDs to the API — let the backend create a new chat
+            const apiChatId = isLocalId(targetId) ? undefined : targetId;
+            const result = await api.chat.sendMessage(text, apiChatId);
+
             const botMessage: LocalMessage = {
                 id: `${targetId}-${Date.now()}-bot`,
                 text: result.message,
@@ -174,51 +178,53 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 status: 'sent',
             };
 
-            // Check if this was a new conversation (no existing title)
-            const conv = conversations.find(c => c.id === targetId);
-            const isNewConversation = conv?.messages.length === 1 && conv?.messages[0].text.includes('Hi there');
-            
-            // Generate title from first user message if new
-            let newTitle = conv?.title || 'New Conversation';
-            if (isNewConversation) {
-                newTitle = text.length > 30 ? text.substring(0, 30) + '...' : text;
-            }
+            // If backend returned a real chatId, update the local conversation ID
+            const realId = result.chatId || targetId;
+            const isNewConversation = isLocalId(targetId);
 
-            const finalUpdated: LocalConversation[] = conversations.map(c => 
-                c.id === targetId 
-                    ? { 
-                        ...c, 
+            // Generate title from first user message if new
+            let newTitle = text.length > 30 ? text.substring(0, 30) + '...' : text;
+
+            setConversations(prev => {
+                const finalUpdated = prev.map(c => {
+                    if (c.id !== targetId) return c;
+
+                    const existingTitle = c.title;
+                    const shouldUpdateTitle = existingTitle === 'New Conversation' || isNewConversation;
+
+                    return {
+                        ...c,
+                        id: realId, // swap temp ID for real backend ID
                         messages: [
                             ...c.messages.map(m => m.id === userMessage.id ? { ...m, status: 'sent' as const } : m),
-                            botMessage
+                            botMessage,
                         ],
-                        title: newTitle,
-                        updatedAt: Date.now()
-                      } 
-                    : c
-            );
-            
-            setConversations(finalUpdated);
-            await saveConversations(finalUpdated);
-            
-            if (!currentConversationId) {
-                setCurrentConversationId(targetId);
+                        title: shouldUpdateTitle ? newTitle : existingTitle,
+                        updatedAt: Date.now(),
+                    };
+                });
+                saveConversations(finalUpdated);
+                return finalUpdated;
+            });
+
+            // Update current conversation ID if it changed
+            if (currentConversationId === targetId && realId !== targetId) {
+                setCurrentConversationId(realId);
             }
         } catch (err) {
             logger.error('Failed to send message', err);
-            
+
             // Mark message as error
-            const errorUpdated: LocalConversation[] = conversations.map(c => 
-                c.id === targetId 
-                    ? { 
-                        ...c, 
-                        messages: c.messages.map(m => 
+            setConversations(prev => prev.map(c =>
+                c.id === targetId
+                    ? {
+                        ...c,
+                        messages: c.messages.map(m =>
                             m.id === userMessage.id ? { ...m, status: 'error' as const } : m
-                        )
-                      } 
+                        ),
+                    }
                     : c
-            );
-            setConversations(errorUpdated);
+            ));
             setError('Failed to send message. Tap to retry.');
         } finally {
             setIsSending(false);
