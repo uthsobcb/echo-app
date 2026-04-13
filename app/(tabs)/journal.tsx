@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Entry } from '../../types/data';
+import { logger } from '@/service/logger';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function Journal() {
@@ -42,7 +43,7 @@ export default function Journal() {
                 const data = await api.entries.getAll(search || undefined, selectedFilter);
                 setEntries(data);
             } catch (e) {
-                console.error('[Journal] Failed to fetch entries', e);
+                logger.error('[Journal] Failed to fetch entries', e);
             } finally {
                 setLoading(false);
             }

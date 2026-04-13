@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthResponse, Chat, Entry, SpaceDrawStatus, User } from '../types/data';
+import { config } from './config';
+import { logger } from './logger';
 
-const BASE_URL = 'https://echo-next.vercel.app/api';
+const BASE_URL = config.API_BASE_URL;
 
 async function getHeaders(isMultipart = false) {
     try {
@@ -17,13 +19,13 @@ async function getHeaders(isMultipart = false) {
         }
         return headers;
     } catch (e) {
-        console.error('API: Error in getHeaders', e);
+        logger.error('API: Error in getHeaders', e);
         throw e;
     }
 }
 
 const fetchWithTimeout = async (resource: RequestInfo, options: RequestInit = {}) => {
-    const { timeout = 15000 } = options as any;
+    const { timeout = 15000 } = options as RequestInit & { timeout?: number };
 
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
@@ -35,9 +37,9 @@ const fetchWithTimeout = async (resource: RequestInfo, options: RequestInit = {}
         });
         clearTimeout(id);
         return response;
-    } catch (error: any) {
+    } catch (error) {
         clearTimeout(id);
-        if (error.name === 'AbortError') {
+        if (error instanceof Error && error.name === 'AbortError') {
             throw new Error('Request timed out');
         }
         throw error;
@@ -47,7 +49,7 @@ const fetchWithTimeout = async (resource: RequestInfo, options: RequestInit = {}
 const handleResponse = async (response: Response) => {
     const data = await response.json();
     if (!response.ok) {
-        console.error('API Error:', data);
+        logger.error('API Error:', data);
         throw new Error(data.message || data.error || 'Something went wrong');
     }
     return data;
@@ -69,7 +71,7 @@ export const api = {
                 }
                 return data as AuthResponse;
             } catch (e) {
-                console.error('API: Login failed', e);
+                logger.error('API: Login failed', e);
                 throw e;
             }
         },
@@ -82,21 +84,21 @@ export const api = {
             return handleResponse(response) as Promise<{ message: string }>;
         },
         googleLogin: async (idToken: string) => {
-            console.log('API: Google Login...');
+            logger.debug('API: Google Login...');
             try {
                 const response = await fetch(`${BASE_URL}/auth/google`, {
                     method: 'POST',
                     headers: await getHeaders(),
                     body: JSON.stringify({ idToken }),
                 });
-                console.log('API: Google Login Response status:', response.status);
+                logger.debug('API: Google Login Response status:', response.status);
                 const data = await handleResponse(response);
                 if (data.token) {
                     await AsyncStorage.setItem('token', data.token);
                 }
                 return data as AuthResponse;
             } catch (e) {
-                console.error('API: Google Login failed', e);
+                logger.error('API: Google Login failed', e);
                 throw e;
             }
         },
@@ -108,7 +110,7 @@ export const api = {
             });
             return handleResponse(response);
         },
-        resetPassword: async (data: any) => {
+        resetPassword: async (data: { token: string; password: string }) => {
             const response = await fetch(`${BASE_URL}/auth/reset-password`, {
                 method: 'POST',
                 headers: await getHeaders(),

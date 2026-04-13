@@ -19,9 +19,15 @@ import {
 
 import { useAuthRequest } from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import { config } from '../../service/config';
 import { useStorage } from '../../context/StorageContext';
 
 WebBrowser.maybeCompleteAuthSession();
+
+const googleConfigured =
+    !!config.GOOGLE_IOS_CLIENT_ID ||
+    !!config.GOOGLE_ANDROID_CLIENT_ID ||
+    !!config.GOOGLE_WEB_CLIENT_ID;
 
 export default function SignIn() {
     const router = useRouter();
@@ -36,10 +42,12 @@ export default function SignIn() {
     const slideAnim = useRef(new Animated.Value(40)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
+    // Pass a placeholder when unconfigured so the hook doesn't throw.
+    // The Google button is disabled when !googleConfigured so auth is never attempted.
     const [request, response, promptAsync] = useAuthRequest({
-        iosClientId: 'YOUR_IOS_CLIENT_ID',
-        androidClientId: 'YOUR_ANDROID_CLIENT_ID',
-        webClientId: 'YOUR_WEB_CLIENT_ID',
+        iosClientId: config.GOOGLE_IOS_CLIENT_ID || 'NOT_CONFIGURED',
+        androidClientId: config.GOOGLE_ANDROID_CLIENT_ID || 'NOT_CONFIGURED',
+        webClientId: config.GOOGLE_WEB_CLIENT_ID || 'NOT_CONFIGURED',
     });
 
     useEffect(() => {
@@ -63,8 +71,8 @@ export default function SignIn() {
             setLoading(true);
             await loginWithGoogle(token);
             router.replace('/(tabs)');
-        } catch (error: any) {
-            Alert.alert('Google Login Failed', error.message);
+        } catch (error) {
+            Alert.alert('Google Login Failed', error instanceof Error ? error.message : 'Unknown error');
         } finally { setLoading(false); }
     };
 
@@ -80,8 +88,8 @@ export default function SignIn() {
             await registerAPI(formData);
             Alert.alert('Success! 🎉', 'Account created! Please login.');
             setIsLogin(true);
-        } catch (error: any) {
-            Alert.alert('Registration Failed', error.message);
+        } catch (error) {
+            Alert.alert('Registration Failed', error instanceof Error ? error.message : 'Unknown error');
         } finally { setLoading(false); }
     };
 
@@ -91,8 +99,8 @@ export default function SignIn() {
             setLoading(true);
             await loginAsAPI({ email: email.toLowerCase(), password });
             router.replace('/(tabs)');
-        } catch (error: any) {
-            Alert.alert('Login Failed', error.message);
+        } catch (error) {
+            Alert.alert('Login Failed', error instanceof Error ? error.message : 'Unknown error');
         } finally { setLoading(false); }
     };
 
@@ -247,7 +255,7 @@ export default function SignIn() {
                         <TouchableOpacity
                             style={styles.googleBtn}
                             onPress={() => promptAsync()}
-                            disabled={!request || loading}
+                            disabled={!request || loading || !googleConfigured}
                             activeOpacity={0.85}
                         >
                             <View style={styles.googleIconWrap}>

@@ -17,13 +17,19 @@ import {
   ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { logger } from "@/service/logger";
 import { dailyPrompt } from "./../../constant/const";
+
+interface TodoItem {
+  id: string;
+  text: string;
+}
 
 export default function Home() {
   const { user, stats, entries, appMode } = useStorage();
   const { colors } = useTheme();
   const [prompt, setPrompt] = useState("");
-  const [todos, setTodos] = useState<any[]>([]);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
   const [taskCount, setTaskCount] = useState(0);
 
   useEffect(() => {
@@ -40,8 +46,8 @@ export default function Home() {
       const data = await api.todo.getAll();
       const items = data?.todos || [];
       const pendingItems = items
-        .filter((t: any) => t.status === 'pending')
-        .map((t: any) => ({
+        .filter((t: { status: string }) => t.status === 'pending')
+        .map((t: { _id: string; todo: string }) => ({
           id: t._id,
           text: t.todo
         }));
@@ -49,7 +55,7 @@ export default function Home() {
       setTaskCount(pendingItems.length);
       setTodos(pendingItems.slice(0, 4));
     } catch (e) {
-      console.error('[Home] Failed to load todos', e);
+      logger.error('[Home] Failed to load todos', e);
     }
   };
 
@@ -60,7 +66,7 @@ export default function Home() {
     try {
       await api.todo.updateStatus(todoId, 'completed');
     } catch (e) {
-      console.error('[Home] Failed to complete todo', e);
+      logger.error('[Home] Failed to complete todo', e);
       loadTodos();
     }
   };
@@ -249,9 +255,9 @@ export default function Home() {
               />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={dynamicStyles.echoTitle}>Echo Says…</Text>
-                {(echoMood || (user as any).mood) ? (
+                {echoMood ? (
                   <View style={dynamicStyles.moodPill}>
-                    <Text style={dynamicStyles.moodPillText}>Mood: {echoMood || (user as any).mood}</Text>
+                    <Text style={dynamicStyles.moodPillText}>Mood: {echoMood}</Text>
                   </View>
                 ) : null}
               </View>

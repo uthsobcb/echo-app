@@ -17,6 +17,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { logger } from '@/service/logger';
 
 interface DrawStatus {
     drawCount: number;
@@ -69,7 +70,7 @@ export default function Space() {
             setDrawStatus(status);
             setMessages(Array.isArray(msgs) ? msgs : msgs.messages || [msgs]);
         } catch (e) {
-            console.error('[Space] loadData failed', e);
+            logger.error('[Space] loadData failed', e);
         } finally {
             setLoadingMessages(false);
         }
@@ -85,8 +86,8 @@ export default function Space() {
             // Reveal animation
             Animated.timing(revealAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
             await loadData();
-        } catch (e: any) {
-            Alert.alert('Draw Error', e.message || 'Could not draw right now');
+        } catch (e) {
+            Alert.alert('Draw Error', e instanceof Error ? e.message : 'Could not draw right now');
         } finally {
             setDrawing(false);
         }
@@ -99,8 +100,8 @@ export default function Space() {
             await api.space.postMessage(newMessage.trim());
             setNewMessage('');
             await loadData();
-        } catch (e: any) {
-            Alert.alert('Error', e.message || 'Could not post message');
+        } catch (e) {
+            Alert.alert('Error', e instanceof Error ? e.message : 'Could not post message');
         } finally {
             setPosting(false);
         }

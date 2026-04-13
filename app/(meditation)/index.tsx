@@ -16,6 +16,7 @@ import Animated, {
     withSequence,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { logger } from '@/service/logger';
 import { useTheme } from '../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
@@ -83,7 +84,7 @@ export default function MeditationPage() {
             });
             setIsSetup(true);
         } catch (e) {
-            console.error('Failed to setup audio', e);
+            logger.error('Failed to setup audio', e);
         }
     };
 
@@ -199,7 +200,7 @@ export default function MeditationPage() {
                 setIsPlaying(true);
             }
         } catch (e) {
-            console.error('Failed to toggle music', e);
+            logger.error('Failed to toggle music', e);
         }
     };
 

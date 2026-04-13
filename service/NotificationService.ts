@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import * as Device from "expo-device";
 import { Platform } from "react-native";
 import { api } from './api';
+import { logger } from './logger';
 
 export enum NotificationType {
     JOURNAL_REMINDER = 'JOURNAL_REMINDER',
@@ -51,7 +52,7 @@ let Notifications: typeof import('expo-notifications') | null = null;
 try {
     Notifications = require('expo-notifications');
 } catch (e) {
-    console.log('[Notifications] expo-notifications not available in this environment (Expo Go).');
+    logger.info('[Notifications] expo-notifications not available in this environment (Expo Go).');
 }
 
 // Set the notification handler if module is available
@@ -69,18 +70,18 @@ if (Notifications) {
     // Add listeners for interaction
     Notifications.addNotificationResponseReceivedListener(response => {
         const data = response.notification.request.content.data;
-        console.log('[Notifications] Response received:', data);
+        logger.info('[Notifications] Response received:', data);
         // Handle deep linking or screen navigation based on data.screen
     });
 
     Notifications.addNotificationReceivedListener(notification => {
-        console.log('[Notifications] Foreground notification:', notification.request.content.title);
+        logger.info('[Notifications] Foreground notification:', notification.request.content.title);
     });
 }
 
 export const setupNotifications = async (): Promise<boolean> => {
     if (!Notifications) {
-        console.log('[Notifications] Skipping – not supported in current environment.');
+        logger.info('[Notifications] Skipping – not supported in current environment.');
         return false;
     }
 
@@ -94,7 +95,7 @@ export const setupNotifications = async (): Promise<boolean> => {
     }
 
     if (!Device.isDevice) {
-        console.log("[Notifications] Must use physical device for Push Notifications");
+        logger.info("[Notifications] Must use physical device for Push Notifications");
         return false;
     }
 
@@ -107,7 +108,7 @@ export const setupNotifications = async (): Promise<boolean> => {
     }
 
     if (finalStatus !== "granted") {
-        console.log("[Notifications] Permission not granted.");
+        logger.info("[Notifications] Permission not granted.");
         return false;
     }
 
@@ -118,13 +119,13 @@ export const setupNotifications = async (): Promise<boolean> => {
 
         if (projectId) {
             const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-            console.log("[Notifications] Push token fetched:", tokenData.data);
+            logger.info("[Notifications] Push token fetched:", tokenData.data);
             await api.users.savePushToken(tokenData.data);
         } else {
-            console.log("[Notifications] No EAS projectId found. Configure eas.projectId in app.json for remote push.");
+            logger.info("[Notifications] No EAS projectId found. Configure eas.projectId in app.json for remote push.");
         }
     } catch (e) {
-        console.log("[Notifications] Could not save push token:", e);
+        logger.info("[Notifications] Could not save push token:", e);
     }
 
     return true;
@@ -136,14 +137,14 @@ const getMascotAsset = async () => {
         await asset.downloadAsync();
         return asset.localUri || asset.uri;
     } catch (e) {
-        console.log("[Notifications] Could not load mascot asset:", e);
+        logger.info("[Notifications] Could not load mascot asset:", e);
         return null;
     }
 };
 
 export const scheduleDailyReminder = async () => {
     if (!Notifications) {
-        console.log('[Notifications] Skipping schedule – not supported in current environment.');
+        logger.info('[Notifications] Skipping schedule – not supported in current environment.');
         return;
     }
 
@@ -172,9 +173,9 @@ export const scheduleDailyReminder = async () => {
             } as any,
         });
 
-        console.log(`[Notifications] Daily reminder scheduled: "${title}"`);
+        logger.info(`[Notifications] Daily reminder scheduled: "${title}"`);
     } catch (e) {
-        console.log("[Notifications] Could not schedule reminder:", e);
+        logger.info("[Notifications] Could not schedule reminder:", e);
     }
 };
 
@@ -199,11 +200,11 @@ export const scheduleTodoReminder = async (taskTitle: string) => {
             trigger: null, // Send immediately
         });
     } catch (e) {
-        console.log("[Notifications] Could not schedule todo reminder:", e);
+        logger.info("[Notifications] Could not schedule todo reminder:", e);
     }
 };
 
-export const scheduleCustomNotification = async (title: string, body: string, data: any = {}) => {
+export const scheduleCustomNotification = async (title: string, body: string, data: Record<string, unknown> = {}) => {
     if (!Notifications) return;
 
     try {
@@ -223,7 +224,7 @@ export const scheduleCustomNotification = async (title: string, body: string, da
             trigger: null,
         });
     } catch (e) {
-        console.log("[Notifications] Could not schedule custom notification:", e);
+        logger.info("[Notifications] Could not schedule custom notification:", e);
     }
 };
 
@@ -253,6 +254,6 @@ export const scheduleStreakReminder = async (days: number) => {
             } as any,
         });
     } catch (e) {
-        console.log("[Notifications] Could not schedule streak reminder:", e);
+        logger.info("[Notifications] Could not schedule streak reminder:", e);
     }
 };

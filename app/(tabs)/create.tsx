@@ -6,15 +6,17 @@ import { Alert, Modal, Text, TouchableOpacity, View } from 'react-native';
 import { useStorage } from '@/context/StorageContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+import { logger } from '@/service/logger';
+
 // Safely load expo-speech-recognition (not available in Expo Go)
-let ExpoSpeechRecognitionModule: any = null;
-let useSpeechRecognitionEvent: (event: string, cb: (e: any) => void) => void = () => { };
+let ExpoSpeechRecognitionModule: Record<string, Function> | null = null;
+let useSpeechRecognitionEvent: (event: string, cb: (e: { results: { transcript: string }[] }) => void) => void = () => { };
 try {
     const sr = require('expo-speech-recognition');
     ExpoSpeechRecognitionModule = sr.ExpoSpeechRecognitionModule;
     useSpeechRecognitionEvent = sr.useSpeechRecognitionEvent;
 } catch {
-    console.log('[SpeechRecognition] Not available in this environment (Expo Go).');
+    logger.info('[SpeechRecognition] Not available in this environment (Expo Go).');
 }
 
 export default function Create() {
@@ -48,7 +50,7 @@ export default function Create() {
 
     const moods = ['Happy 😊', 'Excited 🤩', 'Grateful 😇', 'Relaxed 😌', 'Neutral 😐', 'Tired 😴', 'Sad 😔', 'Anxious 😰', 'Angry 😠'];
 
-    const handleSubmit = async (entry: any) => {
+    const handleSubmit = async (entry: string | { content: string }) => {
         const content = typeof entry === 'string' ? entry : entry.content;
 
         if (appMode === 'api') {
@@ -66,7 +68,7 @@ export default function Create() {
                     }
                 }
             } catch (error) {
-                console.error("Failed to save entry:", error);
+                logger.error("Failed to save entry:", error);
             } finally {
                 setIsSaving(false);
             }
@@ -93,7 +95,7 @@ export default function Create() {
             setShowMoodModal(false);
             router.push('/(tabs)');
         } catch (error) {
-            console.error("Failed to save entry:", error);
+            logger.error("Failed to save entry:", error);
         }
     };
 
@@ -137,7 +139,7 @@ export default function Create() {
                 return true;
             }
         } catch (err) {
-            console.error('Failed to start speech recognition', err);
+            logger.error('Failed to start speech recognition', err);
             Alert.alert('Error', 'Failed to start speech recognition');
             return false;
         }
@@ -162,7 +164,7 @@ export default function Create() {
                 return result.assets[0].uri;
             }
         } catch (error) {
-            console.error('Failed to pick image', error);
+            logger.error('Failed to pick image', error);
             Alert.alert('Error', 'Failed to pick image');
         }
         return undefined;

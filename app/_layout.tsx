@@ -1,5 +1,6 @@
 import "../global.css";
 
+import ErrorBoundary from "@/component/ErrorBoundary";
 import { StorageProvider } from "@/context/StorageContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { scheduleDailyReminder, setupNotifications } from "@/service/NotificationService";
@@ -41,10 +42,12 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <ThemeProvider>
-      <StorageProvider>
-        <Slot />
-      </StorageProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <StorageProvider>
+          <Slot />
+        </StorageProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

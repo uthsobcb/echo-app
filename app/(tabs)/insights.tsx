@@ -5,7 +5,25 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '../../context/ThemeContext';
+import { logger } from '@/service/logger';
+import { useTheme, ThemeColors } from '../../context/ThemeContext';
+
+interface InsightsData {
+    stats?: {
+        totalEntries?: number;
+        currentStreak?: number;
+        avgWordCount?: number;
+        bestStreak?: number;
+    };
+    moodTimeline?: { day: string; score: number; mood: string }[];
+    writingTrend?: { count: number; label: string }[];
+    weeklyEntries?: { count: number; label: string }[];
+    topTopics?: { topic: string; count: number }[];
+    commonWords?: { word: string; frequency: number }[];
+    activityCalendar?: { date: string; hasEntry: boolean }[];
+    aiInsights?: string[];
+    writingTrendComparison?: string;
+}
 
 const { width } = Dimensions.get('window');
 const chartWidth = width - 80;
@@ -14,7 +32,7 @@ type TimeRange = 'week' | 'month' | 'year';
 
 const TOPIC_COLORS = ['#4F6BFF', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#EF4444'];
 
-function TimeRangeSelector({ selected, onSelect, colors }: { selected: TimeRange; onSelect: (r: TimeRange) => void; colors: any }) {
+function TimeRangeSelector({ selected, onSelect, colors }: { selected: TimeRange; onSelect: (r: TimeRange) => void; colors: ThemeColors }) {
     const options: TimeRange[] = ['week', 'month', 'year'];
     return (
         <View className="flex-row rounded-3xl p-1" style={{ backgroundColor: colors.surfaceSecondary }}>
@@ -34,7 +52,7 @@ function TimeRangeSelector({ selected, onSelect, colors }: { selected: TimeRange
     );
 }
 
-function StatCard({ icon, title, value, subtitle, color, colors }: { icon: React.ReactNode; title: string; value: string; subtitle: string; color: string; colors: any }) {
+function StatCard({ icon, title, value, subtitle, color, colors }: { icon: React.ReactNode; title: string; value: string; subtitle: string; color: string; colors: ThemeColors }) {
     return (
         <View className="flex-1 rounded-[18px] p-3.5" style={{ backgroundColor: colors.surface }}>
             <View className="w-9 h-9 rounded-3xl items-center justify-center mb-2.5" style={{ backgroundColor: color + '18' }}>
@@ -51,7 +69,7 @@ export default function Insights() {
     const { appMode } = useStorage();
     const { colors, isDark } = useTheme();
     const [timeRange, setTimeRange] = useState<TimeRange>('week');
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<InsightsData | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -68,19 +86,19 @@ export default function Insights() {
             const result = await api.insights.get(timeRange);
             setData(result);
         } catch (e) {
-            console.error('[Insights] Failed to load', e);
+            logger.error('[Insights] Failed to load', e);
         } finally {
             setLoading(false);
         }
     };
 
     const stats = data?.stats || {};
-    const moodTimeline: any[] = data?.moodTimeline || [];
-    const writingTrend: any[] = data?.writingTrend || [];
-    const weeklyEntries: any[] = data?.weeklyEntries || [];
-    const topTopics: any[] = data?.topTopics || [];
-    const commonWords: any[] = data?.commonWords || [];
-    const activityCalendar: any[] = data?.activityCalendar || [];
+    const moodTimeline = data?.moodTimeline || [];
+    const writingTrend = data?.writingTrend || [];
+    const weeklyEntries = data?.weeklyEntries || [];
+    const topTopics = data?.topTopics || [];
+    const commonWords = data?.commonWords || [];
+    const activityCalendar = data?.activityCalendar || [];
     const aiInsights: string[] = data?.aiInsights || [];
     const trendComparison: string = data?.writingTrendComparison || '';
 

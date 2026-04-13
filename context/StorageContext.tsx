@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../service/api';
+import { config } from '../service/config';
+import { logger } from '../service/logger';
 import { setupNotifications } from '../service/NotificationService';
 import { Entry, Stats, User } from '../types/data';
 
@@ -14,7 +16,7 @@ interface StorageContextType {
     isAuthenticated: boolean;
     appMode: AppMode;
     loginAsLocal: (userData?: Partial<User>) => Promise<void>;
-    loginAsAPI: (credentials: { email: string; password: any }) => Promise<void>;
+    loginAsAPI: (credentials: { email: string; password: string }) => Promise<void>;
     loginWithGoogle: (idToken: string) => Promise<void>;
     registerAPI: (formData: FormData) => Promise<void>;
     logout: () => Promise<void>;
@@ -58,7 +60,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setAppMode(mode);
             await loadData(mode);
         } catch (error) {
-            console.error('Failed to initialize', error);
+            logger.error('Failed to initialize', error);
         } finally {
             setIsLoading(false);
         }
@@ -123,15 +125,15 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 if (storedStats) setStats(JSON.parse(storedStats));
             }
         } catch (error) {
-            console.error('Failed to load data', error);
+            logger.error('Failed to load data', error);
         }
     };
 
-    const saveDataLocal = async (key: string, value: any) => {
+    const saveDataLocal = async (key: string, value: unknown) => {
         try {
             await AsyncStorage.setItem(key, JSON.stringify(value));
         } catch (error) {
-            console.error(`Failed to save ${key}`, error);
+            logger.error(`Failed to save ${key}`, error);
         }
     };
 
@@ -182,34 +184,29 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
         await saveDataLocal('user', localUser);
     };
 
-    const loginAsAPI = async (credentials: { email: string; password: any }) => {
-        console.log('Context: loginAsAPI called');
+    const loginAsAPI = async (credentials: { email: string; password: string }) => {
+        logger.debug('Context: loginAsAPI called');
         try {
             const result = await api.auth.login(credentials);
-            console.log('Context: login result received within loginAsAPI', result);
+            logger.debug('Context: login result received');
             if (result.token) {
-                console.log('Context: Token found, saving matches...');
                 await AsyncStorage.setItem('token', result.token);
                 setAppMode('api');
                 setIsAuthenticated(true);
                 await AsyncStorage.setItem('appMode', 'api');
-                console.log('Context: Loading initial data...');
                 await loadData('api');
-                console.log('Context: Data loaded successfully');
 
                 // Fetch and save push token after successful API login
-                setupNotifications().catch(console.error);
-            } else {
-                console.log('Context: No token in result');
+                setupNotifications().catch(e => logger.error('Notification setup failed', e));
             }
         } catch (e) {
-            console.error('Context: loginAsAPI error', e);
+            logger.error('Context: loginAsAPI error', e);
             throw e;
         }
     };
 
     const loginWithGoogle = async (idToken: string) => {
-        console.log('Context: loginWithGoogle called');
+        logger.debug('Context: loginWithGoogle called');
         try {
             const result = await api.auth.googleLogin(idToken);
             if (result.token) {
@@ -220,10 +217,10 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 await loadData('api');
 
                 // Fetch and save push token after successful Google login
-                setupNotifications().catch(console.error);
+                setupNotifications().catch(e => logger.error('Notification setup failed', e));
             }
         } catch (e) {
-            console.error('Context: loginWithGoogle error', e);
+            logger.error('Context: loginWithGoogle error', e);
             throw e;
         }
     };
@@ -233,6 +230,21 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     const logout = async () => {
+        // Attempt to invalidate the server session before clearing local state
+        if (appMode === 'api') {
+            try {
+                const token = await AsyncStorage.getItem('token');
+                if (token) {
+                    await fetch(`${config.API_BASE_URL}/auth/logout`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }).catch(() => { /* best-effort */ });
+                }
+            } catch {
+                // Server logout is best-effort; proceed with local cleanup
+            }
+        }
+
         setIsAuthenticated(false);
         await AsyncStorage.removeItem('isAuthenticated');
         await AsyncStorage.removeItem('token');
@@ -252,7 +264,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setAppMode('local');
             setIsAuthenticated(false);
         } catch (e) {
-            console.error(e);
+            logger.error('Failed to reset data', e);
         }
     };
 

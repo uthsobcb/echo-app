@@ -11,7 +11,7 @@ function ChatLayout() {
                 screenOptions={{
                     headerShown: false,
                     contentStyle: { backgroundColor: colors.background },
-                    animation: 'slide_from_left',
+                    animation: 'slide_from_right',
                 }}
             >
                 <Stack.Screen name="index" />

@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { api } from '../service/api';
-import { LocalConversation, LocalMessage } from '../types/data';
+import { logger } from '../service/logger';
+import { Chat, LocalConversation, LocalMessage } from '../types/data';
 
 const STORAGE_KEY = 'chat_conversations';
 
@@ -41,7 +42,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setConversations(JSON.parse(stored));
             }
         } catch (err) {
-            console.error('Failed to load conversations', err);
+            logger.error('Failed to load conversations', err);
             setError('Failed to load conversations');
         } finally {
             setIsLoading(false);
@@ -52,17 +53,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
         } catch (err) {
-            console.error('Failed to save conversations', err);
+            logger.error('Failed to save conversations', err);
         }
     }, []);
 
     const loadFromAPI = useCallback(async () => {
         try {
             const history = await api.chat.getHistory();
-            const formatted: LocalConversation[] = history.map((h: any) => ({
+            const formatted: LocalConversation[] = history.map((h: Chat) => ({
                 id: h._id,
                 title: h.threadSummary || 'New Conversation',
-                messages: h.messages.map((m: any, idx: number) => ({
+                messages: h.messages.map((m, idx: number) => ({
                     id: `${h._id}-${idx}`,
                     text: m.text,
                     sender: m.role === 'ai' ? 'bot' : 'user',
@@ -75,7 +76,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setConversations(formatted);
             await saveConversations(formatted);
         } catch (err) {
-            console.error('Failed to load from API', err);
+            logger.error('Failed to load from API', err);
         }
     }, [saveConversations]);
 
@@ -203,8 +204,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (!currentConversationId) {
                 setCurrentConversationId(targetId);
             }
-        } catch (err: any) {
-            console.error('Failed to send message', err);
+        } catch (err) {
+            logger.error('Failed to send message', err);
             
             // Mark message as error
             const errorUpdated: LocalConversation[] = conversations.map(c => 
@@ -227,20 +228,23 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const retryMessage = useCallback(async (messageId: string) => {
         const conv = conversations.find(c => c.id === currentConversationId);
         if (!conv) return;
-        
+
         const message = conv.messages.find(m => m.id === messageId);
         if (!message || message.sender !== 'user') return;
-        
-        // Remove the error message and retry
-        const updated = conversations.map(c => 
-            c.id === currentConversationId 
+
+        const retryText = message.text;
+        const targetId = currentConversationId!;
+
+        // Remove the failed message first, then send fresh
+        setConversations(prev => prev.map(c =>
+            c.id === targetId
                 ? { ...c, messages: c.messages.filter(m => m.id !== messageId) }
                 : c
-        );
-        setConversations(updated);
-        
-        // Send again
-        await sendMessage(message.text, currentConversationId!);
+        ));
+
+        // Small delay to let state settle, then re-send
+        await new Promise(resolve => setTimeout(resolve, 50));
+        await sendMessage(retryText, targetId);
     }, [conversations, currentConversationId, sendMessage]);
 
     return (

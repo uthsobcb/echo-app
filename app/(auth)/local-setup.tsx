@@ -14,6 +14,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { logger } from '@/service/logger';
 import { useStorage } from '../../context/StorageContext';
 
 const AVATARS = ['😊', '😎', '🤗', '🎨', '🌙', '🌿', '⚡', '🎭', '🧠', '🌊'];
@@ -36,7 +37,7 @@ export default function LocalSetup() {
             });
             router.replace('/(tabs)');
         } catch (error) {
-            console.error(error);
+            logger.error('Failed to start local journey', error);
         } finally {
             setIsLoading(false);
         }

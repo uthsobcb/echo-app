@@ -14,6 +14,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { logger } from '@/service/logger';
 
 type TodoItem = {
     _id: string;
@@ -41,7 +42,7 @@ export default function TodoList() {
             const data = await api.todo.getAll();
             setTodos(data?.todos || []);
         } catch (error) {
-            console.error('Failed to fetch todos:', error);
+            logger.error('Failed to fetch todos:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -61,14 +62,14 @@ export default function TodoList() {
         const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
 
         // Optimistic update
-        setTodos(prev => prev.map(t => t._id === id ? { ...t, status: newStatus as any } : t));
+        setTodos(prev => prev.map(t => t._id === id ? { ...t, status: newStatus as TodoItem['status'] } : t));
 
         try {
             await api.todo.updateStatus(id, newStatus);
         } catch (error) {
-            console.error('Failed to update todo:', error);
+            logger.error('Failed to update todo:', error);
             // Revert on error
-            setTodos(prev => prev.map(t => t._id === id ? { ...t, status: currentStatus as any } : t));
+            setTodos(prev => prev.map(t => t._id === id ? { ...t, status: currentStatus as TodoItem['status'] } : t));
             Alert.alert('Error', 'Failed to update task status.');
         }
     };
@@ -87,7 +88,7 @@ export default function TodoList() {
                         try {
                             await api.todo.delete(id);
                         } catch (error) {
-                            console.error('Failed to delete todo:', error);
+                            logger.error('Failed to delete todo:', error);
                             fetchTodos(); // Reload
                             Alert.alert('Error', 'Failed to delete task.');
                         }

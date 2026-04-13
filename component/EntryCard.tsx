@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import { logger } from '@/service/logger';
 import { useTheme } from '../context/ThemeContext';
 
 const THEMES = [
@@ -25,7 +26,7 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
 
     if (!entry) {
         return (
-            <View className="mt-3 rounded-2xl p-7 items-center border border-dashed border-2" style={{ borderColor: colors.border }}>
+            <View className="mt-3 rounded-2xl p-7 items-center border-2 border-dashed" style={{ borderColor: colors.border }}>
                 <Text className="text-[14px] font-semibold" style={{ color: colors.textSecondary }}>No entries yet. Start writing! ✍️</Text>
             </View>
         );
@@ -44,7 +45,7 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
     const handleDelete = () => {
         Alert.alert('Delete Entry', 'Are you sure?', [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Delete', style: 'destructive', onPress: async () => { try { if (id) await deleteEntry(id); } catch (e) { console.error('Failed to delete', e); } } },
+            { text: 'Delete', style: 'destructive', onPress: async () => { try { if (id) await deleteEntry(id); } catch (e) { logger.error('Failed to delete', e); } } },
         ]);
     };
 
