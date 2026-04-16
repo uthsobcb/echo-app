@@ -20,7 +20,7 @@ type TodoItem = {
     _id: string;
     todo: string;
     type?: string;
-    status: 'pending' | 'completed';
+    status: 'pending' | 'in progress' | 'completed';
     moodId?: string;
     createdAt?: string;
 };
@@ -65,7 +65,7 @@ export default function TodoList() {
         setTodos(prev => prev.map(t => t._id === id ? { ...t, status: newStatus as TodoItem['status'] } : t));
 
         try {
-            await api.todo.updateStatus(id, newStatus);
+            await api.todo.update(id, { status: newStatus as 'pending' | 'completed' });
         } catch (error) {
             logger.error('Failed to update todo:', error);
             // Revert on error
@@ -86,7 +86,8 @@ export default function TodoList() {
                     onPress: async () => {
                         setTodos(prev => prev.filter(t => t._id !== id));
                         try {
-                            await api.todo.delete(id);
+                            const todo = todos.find(t => t._id === id);
+                            await api.todo.delete(id, todo?.todo ?? '');
                         } catch (error) {
                             logger.error('Failed to delete todo:', error);
                             fetchTodos(); // Reload

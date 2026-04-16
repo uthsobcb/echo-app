@@ -1,12 +1,13 @@
 import JournalEntryBox from '@/component/JournalEntryBox';
-import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Modal, Text, TouchableOpacity, View } from 'react-native';
-
+import { useGamification } from '@/context/GamificationContext';
 import { useStorage } from '@/context/StorageContext';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-
 import { logger } from '@/service/logger';
+import * as ImagePicker from 'expo-image-picker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
+import { StreakData } from '@/types/data';
 
 // Safely load expo-speech-recognition (not available in Expo Go)
 let ExpoSpeechRecognitionModule: Record<string, Function> | null = null;
@@ -21,6 +22,8 @@ try {
 
 export default function Create() {
     const { addEntry, entries, updateEntry, appMode } = useStorage();
+    const { handleEntryCreated, state: gam } = useGamification();
+    const { colors } = useTheme();
     const router = useRouter();
     const { entryId } = useLocalSearchParams<{ entryId: string }>();
 
@@ -28,7 +31,8 @@ export default function Create() {
     const [pendingEntryContent, setPendingEntryContent] = useState<string>('');
     const [initialContent, setInitialContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
-    const [aiCommentModal, setAiCommentModal] = useState<string | null>(null);
+    const [showResultModal, setShowResultModal] = useState(false);
+    const [resultData, setResultData] = useState<{ comment: string; xp: number; streak: number; milestone?: string | null } | null>(null);
 
     const contentSetterRef = useRef<React.Dispatch<React.SetStateAction<string>> | null>(null);
 
@@ -48,7 +52,7 @@ export default function Create() {
         }
     }, [entryId, entries]);
 
-    const moods = ['Happy 😊', 'Excited 🤩', 'Grateful 😇', 'Relaxed 😌', 'Neutral 😐', 'Tired 😴', 'Sad 😔', 'Anxious 😰', 'Angry 😠'];
+    const moods = ['Happy', 'Excited', 'Grateful', 'Relaxed', 'Neutral', 'Tired', 'Sad', 'Anxious', 'Angry'];
 
     const handleSubmit = async (entry: string | { content: string }) => {
         const content = typeof entry === 'string' ? entry : entry.content;
@@ -60,9 +64,22 @@ export default function Create() {
                     await updateEntry(entryId, { content });
                     router.push('/(tabs)');
                 } else {
-                    const newEntry = await addEntry({ content, mood: 'AI' }); // Mood is handled by backend
-                    if (newEntry && newEntry.comment) {
-                        setAiCommentModal(newEntry.comment);
+                    const newEntry = await addEntry({ content, mood: 'AI' });
+                    if (newEntry) {
+                        // Trigger gamification celebrations
+                        const streakData = (newEntry as any).streakData as StreakData | undefined;
+                        if (streakData) {
+                            handleEntryCreated(streakData);
+                        }
+
+                        // Show result modal with AI comment + gamification data
+                        setResultData({
+                            comment: newEntry.comment || '',
+                            xp: streakData?.totalXp ?? gam.totalXp,
+                            streak: streakData?.currentStreak ?? gam.currentStreak,
+                            milestone: streakData?.milestone,
+                        });
+                        setShowResultModal(true);
                     } else {
                         router.push('/(tabs)');
                     }
@@ -81,16 +98,9 @@ export default function Create() {
     const handleSaveWithMood = async (mood: string) => {
         try {
             if (entryId) {
-                await updateEntry(entryId, {
-                    content: pendingEntryContent,
-                    mood: mood,
-                });
+                await updateEntry(entryId, { content: pendingEntryContent, mood });
             } else {
-                await addEntry({
-                    content: pendingEntryContent,
-                    mood: mood,
-                    date: new Date().toISOString()
-                });
+                await addEntry({ content: pendingEntryContent, mood, date: new Date().toISOString() });
             }
             setShowMoodModal(false);
             router.push('/(tabs)');
@@ -129,13 +139,7 @@ export default function Create() {
                     Alert.alert('Permission needed', 'Speech recognition permission is required.');
                     return false;
                 }
-
-                ExpoSpeechRecognitionModule.start({
-                    lang: 'en-US',
-                    interimResults: false,
-                    maxAlternatives: 1,
-                });
-
+                ExpoSpeechRecognitionModule.start({ lang: 'en-US', interimResults: false, maxAlternatives: 1 });
                 return true;
             }
         } catch (err) {
@@ -152,14 +156,12 @@ export default function Create() {
                 Alert.alert('Permission needed', 'Sorry, camera roll permissions are required!');
                 return undefined;
             }
-
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 aspect: [4, 3],
                 quality: 1,
             });
-
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 return result.assets[0].uri;
             }
@@ -175,7 +177,17 @@ export default function Create() {
     };
 
     return (
-        <View className="flex-1 bg-white">
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+            {/* XP reward preview */}
+            {!entryId && appMode === 'api' && (
+                <View style={[s.rewardPreview, { backgroundColor: colors.surfaceSecondary }]}>
+                    <Text style={s.rewardText}> +10 XP</Text>
+                    {gam.streakAtRisk && (
+                        <Text style={s.riskText}> Streak at risk!</Text>
+                    )}
+                </View>
+            )}
+
             <JournalEntryBox
                 onSubmit={handleSubmit}
                 initialContent={initialContent}
@@ -187,69 +199,101 @@ export default function Create() {
                 isSaving={isSaving}
             />
 
-            <Modal
-                animationType="fade"
-                transparent={true}
-                visible={showMoodModal}
-                onRequestClose={() => setShowMoodModal(false)}
-            >
-                <View className="flex-1 justify-center items-center bg-black/50">
-                    <View className="bg-white m-5 p-6 rounded-3xl w-[90%] shadow-xl">
-                        <Text className="text-xl font-bold text-center mb-6 text-gray-900">How are you feeling?</Text>
-
-                        <View className="flex-row flex-wrap justify-center gap-3">
+            {/* Mood Picker (local mode) */}
+            <Modal animationType="fade" transparent visible={showMoodModal} onRequestClose={() => setShowMoodModal(false)}>
+                <View style={s.modalOverlay}>
+                    <View style={[s.modalCard, { backgroundColor: colors.surface }]}>
+                        <Text style={[s.modalTitle, { color: colors.text }]}>How are you feeling?</Text>
+                        <View style={s.moodGrid}>
                             {moods.map((mood) => (
-                                <TouchableOpacity
-                                    key={mood}
-                                    onPress={() => handleSaveWithMood(mood)}
-                                    className="bg-gray-50 border border-gray-100 px-4 py-3 rounded-2xl mb-2"
-                                >
-                                    <Text className="text-base">{mood}</Text>
+                                <TouchableOpacity key={mood} onPress={() => handleSaveWithMood(mood)} style={[s.moodChip, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+                                    <Text style={[s.moodChipText, { color: colors.text }]}>{mood}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
-
-                        <TouchableOpacity
-                            onPress={() => setShowMoodModal(false)}
-                            className="mt-6 self-center"
-                        >
-                            <Text className="text-gray-500 font-medium">Cancel</Text>
+                        <TouchableOpacity onPress={() => setShowMoodModal(false)} style={s.cancelBtn}>
+                            <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Cancel</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
 
-            {/* AI Comment Modal */}
+            {/* Gamified Result Modal (API mode) */}
             <Modal
                 animationType="fade"
-                transparent={true}
-                visible={!!aiCommentModal}
-                onRequestClose={() => {
-                    setAiCommentModal(null);
-                    router.push('/(tabs)');
-                }}
+                transparent
+                visible={showResultModal}
+                onRequestClose={() => { setShowResultModal(false); router.push('/(tabs)'); }}
             >
-                <View className="flex-1 justify-center items-center bg-black/50">
-                    <View className="bg-white m-5 p-6 rounded-3xl w-[90%] shadow-xl items-center">
-                        <View className="w-16 h-16 rounded-full bg-blue-50 items-center justify-center mb-4">
-                            <Text className="text-3xl">✨</Text>
+                <View style={s.modalOverlay}>
+                    <View style={[s.resultCard, { backgroundColor: colors.surface }]}>
+                        {/* XP Badge */}
+                        <View style={s.xpBadge}>
+                            <Text style={s.xpBadgeText}>+10 XP</Text>
                         </View>
-                        <Text className="text-xl font-bold text-center mb-2 text-gray-900">Echo's Insight</Text>
-                        <Text className="text-base text-gray-600 text-center mb-6 leading-6">
-                            {aiCommentModal}
-                        </Text>
+
+                        {/* Streak */}
+                        <View style={s.streakRow}>
+                            <Text style={s.streakEmoji}></Text>
+                            <Text style={[s.streakVal, { color: colors.text }]}>{resultData?.streak ?? 0} Day Streak</Text>
+                        </View>
+
+                        {/* Milestone */}
+                        {resultData?.milestone && (
+                            <View style={s.milestoneBanner}>
+                                <Text style={s.milestoneText}> {resultData.milestone}</Text>
+                            </View>
+                        )}
+
+                        {/* AI Comment */}
+                        {resultData?.comment ? (
+                            <>
+                                <View style={s.divider} />
+                                <View style={s.commentSection}>
+                                    <Text style={[s.commentLabel, { color: colors.textSecondary }]}>Echo's Insight</Text>
+                                    <Text style={[s.commentText, { color: colors.text }]}>{resultData.comment}</Text>
+                                </View>
+                            </>
+                        ) : null}
+
                         <TouchableOpacity
-                            onPress={() => {
-                                setAiCommentModal(null);
-                                router.push('/(tabs)');
-                            }}
-                            className="bg-blue-600 px-6 py-3 rounded-2xl w-full items-center"
+                            onPress={() => { setShowResultModal(false); router.push('/(tabs)'); }}
+                            style={s.doneBtn}
                         >
-                            <Text className="text-white font-bold text-base">Done</Text>
+                            <Text style={s.doneBtnText}>Continue</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
         </View>
-    )
+    );
 }
+
+const s = StyleSheet.create({
+    rewardPreview: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 16 },
+    rewardText: { fontSize: 13, fontWeight: '700', color: '#F59E0B' },
+    riskText: { fontSize: 13, fontWeight: '700', color: '#EF4444' },
+
+    modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+    modalCard: { margin: 20, padding: 24, borderRadius: 24, width: '90%', alignItems: 'center' },
+    modalTitle: { fontSize: 20, fontWeight: '800', marginBottom: 20 },
+    moodGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 },
+    moodChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16, borderWidth: 1 },
+    moodChipText: { fontSize: 15, fontWeight: '600' },
+    cancelBtn: { marginTop: 20 },
+
+    resultCard: { margin: 20, padding: 28, borderRadius: 28, width: '90%', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 20, elevation: 8 },
+    xpBadge: { backgroundColor: '#FEF3C7', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10, marginBottom: 16 },
+    xpBadgeText: { fontSize: 22, fontWeight: '900', color: '#F59E0B' },
+    streakRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+    streakEmoji: { fontSize: 28 },
+    streakVal: { fontSize: 20, fontWeight: '800' },
+    milestoneBanner: { backgroundColor: '#FFF7ED', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 16, marginBottom: 8 },
+    milestoneText: { fontSize: 14, fontWeight: '700', color: '#C2410C', textAlign: 'center' },
+    divider: { height: 1, backgroundColor: '#E5E7EB', width: '100%', marginVertical: 16 },
+    commentSection: { width: '100%', marginBottom: 16 },
+    commentLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, marginBottom: 8 },
+    commentText: { fontSize: 15, lineHeight: 22 },
+    doneBtn: { backgroundColor: '#4F6BFF', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 40, width: '100%', alignItems: 'center' },
+    doneBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+});

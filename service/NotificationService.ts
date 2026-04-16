@@ -257,3 +257,59 @@ export const scheduleStreakReminder = async (days: number) => {
         logger.info("[Notifications] Could not schedule streak reminder:", e);
     }
 };
+
+/** Schedule a streak-at-risk urgent nudge (fires in 2 hours) */
+export const scheduleStreakAtRiskNudge = async (streakDays: number) => {
+    if (!Notifications) return;
+
+    try {
+        const mascotUri = await getMascotAsset();
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: `Your ${streakDays}-day streak is about to end!`,
+                body: "Write a quick entry to keep it alive. Echo believes in you!",
+                sound: true,
+                data: { screen: 'create', type: 'STREAK_RECOVERY' },
+                attachments: mascotUri ? [{
+                    url: mascotUri,
+                    identifier: 'mascot-risk',
+                    type: 'image/png'
+                } as any] : [],
+            },
+            trigger: {
+                type: 'timeInterval',
+                seconds: 7200, // 2 hours
+                repeats: false,
+            } as any,
+        });
+        logger.info(`[Notifications] Streak-at-risk nudge scheduled for ${streakDays}-day streak`);
+    } catch (e) {
+        logger.info("[Notifications] Could not schedule streak-at-risk nudge:", e);
+    }
+};
+
+/** Schedule a badge proximity nudge */
+export const scheduleBadgeProximityNudge = async (badgeName: string, entriesRemaining: number) => {
+    if (!Notifications) return;
+    if (entriesRemaining > 3 || entriesRemaining <= 0) return;
+
+    try {
+        const mascotUri = await getMascotAsset();
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: `Almost there!`,
+                body: `Just ${entriesRemaining} more ${entriesRemaining === 1 ? 'entry' : 'entries'} until you earn "${badgeName}"!`,
+                sound: true,
+                data: { screen: 'create', type: 'CUSTOM' },
+                attachments: mascotUri ? [{
+                    url: mascotUri,
+                    identifier: 'mascot-badge',
+                    type: 'image/png'
+                } as any] : [],
+            },
+            trigger: null,
+        });
+    } catch (e) {
+        logger.info("[Notifications] Could not schedule badge proximity nudge:", e);
+    }
+};

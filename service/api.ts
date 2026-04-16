@@ -1,5 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthResponse, Chat, Entry, SpaceDrawStatus, User } from '../types/data';
+import {
+    AdminStats,
+    AuthResponse,
+    Chat,
+    ChatSendResponse,
+    Entry,
+    InsightsResponse,
+    LeaderboardEntry,
+    MoodCreateResponse,
+    MoodHistoryItem,
+    Notification,
+    Post,
+    SpaceDrawStatus,
+    SpaceMessage,
+    Todo,
+    User,
+} from '../types/data';
 import { config } from './config';
 import { logger } from './logger';
 
@@ -50,7 +66,6 @@ const handleResponse = async (response: Response) => {
     const data = await response.json();
     if (!response.ok) {
         logger.error('API Error:', data);
-        // Extract a readable message — error can be a string or a nested object
         const msg =
             data.message ||
             (typeof data.error === 'string' ? data.error : data.error?.message) ||
@@ -61,7 +76,7 @@ const handleResponse = async (response: Response) => {
 };
 
 export const api = {
-    // Auth
+    // ─── Authentication ──────────────────────────────────────────────
     auth: {
         login: async (credentials: { email: string; password: string }) => {
             try {
@@ -80,14 +95,29 @@ export const api = {
                 throw e;
             }
         },
+
         register: async (formData: FormData) => {
             const response = await fetch(`${BASE_URL}/auth/register`, {
                 method: 'POST',
                 headers: await getHeaders(true),
                 body: formData,
             });
-            return handleResponse(response) as Promise<{ message: string }>;
+            return handleResponse(response) as Promise<{ message: string; imageUrl?: string }>;
         },
+
+        logout: async () => {
+            try {
+                const response = await fetch(`${BASE_URL}/auth/logout`, {
+                    method: 'POST',
+                    headers: await getHeaders(),
+                });
+                return handleResponse(response);
+            } catch (e) {
+                logger.error('API: Logout failed', e);
+                throw e;
+            }
+        },
+
         googleLogin: async (idToken: string) => {
             logger.debug('API: Google Login...');
             try {
@@ -107,6 +137,7 @@ export const api = {
                 throw e;
             }
         },
+
         forgotPassword: async (email: string) => {
             const response = await fetch(`${BASE_URL}/auth/forgot-password`, {
                 method: 'POST',
@@ -115,17 +146,48 @@ export const api = {
             });
             return handleResponse(response);
         },
-        resetPassword: async (data: { token: string; password: string }) => {
+
+        resetPassword: async (data: { email: string; code: string; password: string }) => {
             const response = await fetch(`${BASE_URL}/auth/reset-password`, {
                 method: 'POST',
                 headers: await getHeaders(),
                 body: JSON.stringify(data),
             });
             return handleResponse(response);
-        }
+        },
     },
 
-    // Mood & Journal
+    // ─── User Profile ────────────────────────────────────────────────
+    profile: {
+        get: async () => {
+            const response = await fetch(`${BASE_URL}/profile`, {
+                headers: await getHeaders(),
+            });
+            return handleResponse(response) as Promise<{ success: boolean; user: User }>;
+        },
+
+        update: async (updates: Partial<User> & { currentPassword?: string; newPassword?: string }) => {
+            const response = await fetch(`${BASE_URL}/profile`, {
+                method: 'PUT',
+                headers: await getHeaders(),
+                body: JSON.stringify(updates),
+            });
+            return handleResponse(response);
+        },
+    },
+
+    users: {
+        savePushToken: async (token: string, timezone?: string) => {
+            const response = await fetch(`${BASE_URL}/users/push-token`, {
+                method: 'POST',
+                headers: await getHeaders(),
+                body: JSON.stringify({ token, timezone }),
+            });
+            return handleResponse(response) as Promise<{ message: string; pushToken: string; timezone: string }>;
+        },
+    },
+
+    // ─── Mood & Journal ──────────────────────────────────────────────
     mood: {
         create: async (content: string, imgUrl?: string) => {
             const response = await fetch(`${BASE_URL}/mood`, {
@@ -133,17 +195,18 @@ export const api = {
                 headers: await getHeaders(),
                 body: JSON.stringify({ content, imgUrl }),
             });
-            return handleResponse(response) as Promise<Entry>;
+            return handleResponse(response) as Promise<MoodCreateResponse>;
         },
+
         getHistory: async () => {
             const response = await fetch(`${BASE_URL}/mood-tracker`, {
                 headers: await getHeaders(),
             });
-            return handleResponse(response) as Promise<{ mood: string; score: number; _id: string; createdAt: string }[]>;
+            return handleResponse(response) as Promise<MoodHistoryItem[]>;
         },
     },
 
-    // Entries
+    // ─── Entry Management ────────────────────────────────────────────
     entries: {
         getAll: async (search?: string, mood?: string) => {
             const params = new URLSearchParams();
@@ -154,17 +217,18 @@ export const api = {
                 headers: await getHeaders(),
             });
             const data = await handleResponse(response);
-            // API may return { entries: [...] }, { moods: [...] }, or a bare array
             const entries = Array.isArray(data) ? data : (data.entries || data.moods || []);
             return entries as Entry[];
         },
+
         getById: async (id: string) => {
             const response = await fetch(`${BASE_URL}/entries/${id}`, {
                 headers: await getHeaders(),
             });
             return handleResponse(response) as Promise<Entry>;
         },
-        update: async (id: string, updates: Partial<Entry>) => {
+
+        update: async (id: string, updates: Partial<Pick<Entry, 'mood' | 'score' | 'comment' | 'content' | 'imgUrl'>>) => {
             const response = await fetch(`${BASE_URL}/entries/${id}`, {
                 method: 'PATCH',
                 headers: await getHeaders(),
@@ -172,16 +236,45 @@ export const api = {
             });
             return handleResponse(response);
         },
+
         delete: async (id: string) => {
             const response = await fetch(`${BASE_URL}/entries/${id}`, {
                 method: 'DELETE',
                 headers: await getHeaders(),
             });
             return handleResponse(response) as Promise<{ message: string }>;
-        }
+        },
     },
 
-    // Chat
+    // ─── Todos ───────────────────────────────────────────────────────
+    todo: {
+        getAll: async () => {
+            const response = await fetch(`${BASE_URL}/todo`, {
+                headers: await getHeaders(),
+            });
+            return handleResponse(response) as Promise<{ todos: Todo[] }>;
+        },
+
+        update: async (id: string, updates: { oldTask?: string; newTask?: string; status?: 'pending' | 'in progress' | 'completed' }) => {
+            const response = await fetch(`${BASE_URL}/todo/${id}`, {
+                method: 'PATCH',
+                headers: await getHeaders(),
+                body: JSON.stringify(updates),
+            });
+            return handleResponse(response) as Promise<{ message: string; todo: Todo }>;
+        },
+
+        delete: async (id: string, task: string) => {
+            const response = await fetch(`${BASE_URL}/todo/${id}`, {
+                method: 'DELETE',
+                headers: await getHeaders(),
+                body: JSON.stringify({ task }),
+            });
+            return handleResponse(response) as Promise<{ message: string }>;
+        },
+    },
+
+    // ─── Chat ────────────────────────────────────────────────────────
     chat: {
         sendMessage: async (message: string, chatId?: string) => {
             const response = await fetch(`${BASE_URL}/chat`, {
@@ -189,105 +282,42 @@ export const api = {
                 headers: await getHeaders(),
                 body: JSON.stringify({ message, chatId }),
             });
-            return handleResponse(response) as Promise<{ message: string; chatId: string }>;
+            return handleResponse(response) as Promise<ChatSendResponse>;
         },
-        getHistory: async () => {
+
+        getAll: async () => {
             const response = await fetch(`${BASE_URL}/chat`, {
                 headers: await getHeaders(),
             });
             return handleResponse(response) as Promise<Chat[]>;
         },
-        getSession: async (id: string) => {
+
+        getById: async (id: string) => {
             const response = await fetch(`${BASE_URL}/chat/${id}`, {
                 headers: await getHeaders(),
             });
             return handleResponse(response) as Promise<Chat>;
-        }
-    },
-
-    // Users
-    users: {
-        savePushToken: async (token: string) => {
-            const response = await fetch(`${BASE_URL}/users/push-token`, {
-                method: 'POST',
-                headers: await getHeaders(),
-                body: JSON.stringify({ token }),
-            });
-            return handleResponse(response);
-        }
-    },
-
-    // Profile
-    profile: {
-        get: async () => {
-            const response = await fetch(`${BASE_URL}/profile`, {
-                headers: await getHeaders(),
-            });
-            return handleResponse(response) as Promise<{ success: boolean; user: User }>;
         },
-        update: async (updates: Partial<User> & { currentPassword?: string; newPassword?: string }) => {
-            const response = await fetch(`${BASE_URL}/profile`, {
-                method: 'PUT',
-                headers: await getHeaders(),
-                body: JSON.stringify(updates),
-            });
-            return handleResponse(response);
-        }
-    },
 
-    // Insights
-    insights: {
-        get: async (range: 'week' | 'month' | 'year' = 'week') => {
-            const response = await fetch(`${BASE_URL}/insights?range=${range}`, {
-                headers: await getHeaders(),
-            });
-            return handleResponse(response);
-        }
-    },
-
-    // Todo (Not in OpenAPI spec but kept as per plan)
-    todo: {
-        getAll: async () => {
-            const response = await fetch(`${BASE_URL}/todo`, {
-                headers: await getHeaders(),
-            });
-            return handleResponse(response);
-        },
-        updateStatus: async (moodId: string, status: string) => {
-            const response = await fetch(`${BASE_URL}/todo/${moodId}`, {
-                method: 'PATCH',
-                headers: await getHeaders(),
-                body: JSON.stringify({ status }),
-            });
-            return handleResponse(response);
-        },
-        delete: async (moodId: string) => {
-            const response = await fetch(`${BASE_URL}/todo/${moodId}`, {
+        delete: async (id: string) => {
+            const response = await fetch(`${BASE_URL}/chat/${id}`, {
                 method: 'DELETE',
                 headers: await getHeaders(),
             });
-            return handleResponse(response);
-        }
-    },
+            return handleResponse(response) as Promise<{ message: string }>;
+        },
 
-    // Blog (Not in OpenAPI spec but kept as per plan)
-    posts: {
-        getAll: async (all?: boolean) => {
-            const url = all ? `${BASE_URL}/posts?all=true` : `${BASE_URL}/posts`;
-            const response = await fetch(url, {
+        updateSummary: async (id: string, threadSummary: string) => {
+            const response = await fetch(`${BASE_URL}/chat/${id}`, {
+                method: 'PATCH',
                 headers: await getHeaders(),
+                body: JSON.stringify({ threadSummary }),
             });
             return handleResponse(response);
         },
-        getById: async (id: string) => {
-            const response = await fetch(`${BASE_URL}/posts/${id}`, {
-                headers: await getHeaders(),
-            });
-            return handleResponse(response);
-        }
     },
 
-    // Space
+    // ─── Space (Community) ───────────────────────────────────────────
     space: {
         getDrawStatus: async () => {
             const response = await fetch(`${BASE_URL}/space/draw`, {
@@ -295,6 +325,7 @@ export const api = {
             });
             return handleResponse(response) as Promise<SpaceDrawStatus>;
         },
+
         recordDraw: async () => {
             const response = await fetch(`${BASE_URL}/space/draw`, {
                 method: 'POST',
@@ -302,26 +333,190 @@ export const api = {
             });
             return handleResponse(response);
         },
+
         getMessage: async () => {
             const response = await fetch(`${BASE_URL}/space/message`, {
                 headers: await getHeaders(),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<{ data: SpaceMessage }>;
         },
+
         postMessage: async (content: string) => {
             const response = await fetch(`${BASE_URL}/space/message`, {
                 method: 'POST',
                 headers: await getHeaders(),
                 body: JSON.stringify({ content }),
             });
-            return handleResponse(response);
+            return handleResponse(response) as Promise<{ message: string; data: SpaceMessage }>;
         },
+
         getLeaderboard: async () => {
-            // Not in OpenAPI spec but kept
             const response = await fetch(`${BASE_URL}/space/leaderboard`, {
                 headers: await getHeaders(),
             });
+            return handleResponse(response) as Promise<{ data: LeaderboardEntry[] }>;
+        },
+    },
+
+    // ─── Blog Posts ──────────────────────────────────────────────────
+    posts: {
+        getAll: async (all?: boolean) => {
+            const url = all ? `${BASE_URL}/posts?all=true` : `${BASE_URL}/posts`;
+            const response = await fetch(url, {
+                headers: await getHeaders(),
+            });
+            return handleResponse(response) as Promise<Post[]>;
+        },
+
+        getById: async (id: string) => {
+            const response = await fetch(`${BASE_URL}/posts/${id}`, {
+                headers: await getHeaders(),
+            });
+            return handleResponse(response) as Promise<Post>;
+        },
+
+        create: async (post: { title: string; content: string; slug: string; published?: boolean }) => {
+            const response = await fetch(`${BASE_URL}/posts`, {
+                method: 'POST',
+                headers: await getHeaders(),
+                body: JSON.stringify(post),
+            });
+            return handleResponse(response) as Promise<Post>;
+        },
+
+        update: async (id: string, updates: Partial<Pick<Post, 'title' | 'content' | 'slug' | 'published' | 'coverImage' | 'excerpt' | 'tags'>>) => {
+            const response = await fetch(`${BASE_URL}/posts/${id}`, {
+                method: 'PATCH',
+                headers: await getHeaders(),
+                body: JSON.stringify(updates),
+            });
             return handleResponse(response);
-        }
-    }
+        },
+
+        delete: async (id: string) => {
+            const response = await fetch(`${BASE_URL}/posts/${id}`, {
+                method: 'DELETE',
+                headers: await getHeaders(),
+            });
+            return handleResponse(response) as Promise<{ message: string }>;
+        },
+    },
+
+    // ─── Insights ────────────────────────────────────────────────────
+    insights: {
+        get: async (range: 'week' | 'month' | 'year' = 'week') => {
+            const response = await fetch(`${BASE_URL}/insights?range=${range}`, {
+                headers: await getHeaders(),
+            });
+            return handleResponse(response) as Promise<InsightsResponse>;
+        },
+    },
+
+    // ─── Admin ───────────────────────────────────────────────────────
+    admin: {
+        getStats: async () => {
+            const response = await fetch(`${BASE_URL}/admin/stats`, {
+                headers: await getHeaders(),
+            });
+            return handleResponse(response) as Promise<AdminStats>;
+        },
+
+        updateUser: async (userId: string, updates: Record<string, unknown>) => {
+            const response = await fetch(`${BASE_URL}/admin/user`, {
+                method: 'PATCH',
+                headers: await getHeaders(),
+                body: JSON.stringify({ userId, updates }),
+            });
+            return handleResponse(response);
+        },
+
+        deleteUser: async (userId: string) => {
+            const response = await fetch(`${BASE_URL}/admin/user`, {
+                method: 'DELETE',
+                headers: await getHeaders(),
+                body: JSON.stringify({ userId }),
+            });
+            return handleResponse(response);
+        },
+
+        broadcastNotification: async (notification: {
+            title: string;
+            body: string;
+            data?: Record<string, unknown>;
+            scheduledAt?: string;
+        }) => {
+            const response = await fetch(`${BASE_URL}/admin/notifications/broadcast`, {
+                method: 'POST',
+                headers: await getHeaders(),
+                body: JSON.stringify(notification),
+            });
+            return handleResponse(response);
+        },
+
+        sendNotificationToUser: async (notification: {
+            userId: string;
+            title: string;
+            body: string;
+            type?: 'JOURNAL_REMINDER' | 'STREAK_RECOVERY' | 'TODO_REMINDER' | 'CUSTOM' | 'SYSTEM';
+            data?: Record<string, unknown>;
+            scheduledAt?: string;
+        }) => {
+            const response = await fetch(`${BASE_URL}/admin/notifications/send-to-user`, {
+                method: 'POST',
+                headers: await getHeaders(),
+                body: JSON.stringify(notification),
+            });
+            return handleResponse(response);
+        },
+
+        listNotifications: async () => {
+            const response = await fetch(`${BASE_URL}/admin/notifications/list`, {
+                headers: await getHeaders(),
+            });
+            return handleResponse(response) as Promise<{ notifications: Notification[] }>;
+        },
+    },
+
+    // ─── Cron Jobs ───────────────────────────────────────────────────
+    cron: {
+        sendWeeklyReports: async (cronSecret: string) => {
+            const response = await fetch(`${BASE_URL}/cron/reports`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${cronSecret}`,
+                },
+            });
+            return handleResponse(response);
+        },
+
+        sendReminders: async (cronSecret: string) => {
+            const response = await fetch(`${BASE_URL}/cron/reminders`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${cronSecret}`,
+                },
+            });
+            return handleResponse(response) as Promise<{ message: string }>;
+        },
+
+        sendTimelyNudges: async (cronSecret: string) => {
+            const response = await fetch(`${BASE_URL}/cron/timely-nudges`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${cronSecret}`,
+                },
+            });
+            return handleResponse(response) as Promise<{ message: string }>;
+        },
+
+        processScheduledQueue: async (cronSecret: string) => {
+            const response = await fetch(`${BASE_URL}/cron/scheduled-queue`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${cronSecret}`,
+                },
+            });
+            return handleResponse(response) as Promise<{ message: string }>;
+        },
+    },
 };

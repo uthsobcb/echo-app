@@ -1,3 +1,5 @@
+import ProgressRing from '@/component/gamification/ProgressRing';
+import { useGamification } from '@/context/GamificationContext';
 import { useStorage } from '@/context/StorageContext';
 import { api } from '@/service/api';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,23 +9,9 @@ import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { logger } from '@/service/logger';
 import { useTheme, ThemeColors } from '../../context/ThemeContext';
+import { InsightsResponse } from '@/types/data';
 
-interface InsightsData {
-    stats?: {
-        totalEntries?: number;
-        currentStreak?: number;
-        avgWordCount?: number;
-        bestStreak?: number;
-    };
-    moodTimeline?: { day: string; score: number; mood: string }[];
-    writingTrend?: { count: number; label: string }[];
-    weeklyEntries?: { count: number; label: string }[];
-    topTopics?: { topic: string; count: number }[];
-    commonWords?: { word: string; frequency: number }[];
-    activityCalendar?: { date: string; hasEntry: boolean }[];
-    aiInsights?: string[];
-    writingTrendComparison?: string;
-}
+interface InsightsData extends Partial<InsightsResponse> {}
 
 const { width } = Dimensions.get('window');
 const chartWidth = width - 80;
@@ -65,6 +53,86 @@ function StatCard({ icon, title, value, subtitle, color, colors }: { icon: React
     );
 }
 
+const BADGE_DATA = [
+    { id: 'Echo Sunshine', icon: 'sun-wireless', color: '#FCD34D', required: 1 },
+    { id: 'Pen Whisperer', icon: 'feather', color: '#60A5FA', required: 7 },
+    { id: 'Mindful Scribe', icon: 'book-open-variant', color: '#34D399', required: 30 },
+    { id: 'Thought Architect', icon: 'brain', color: '#A78BFA', required: 45 },
+    { id: 'Guardian of Inked Wisdom', icon: 'shield-star', color: '#F87171', required: 60 },
+];
+
+function XpLevelCard({ colors }: { colors: ThemeColors }) {
+    const { state: gam } = useGamification();
+    return (
+        <View className="px-4 mb-4">
+            <View className="rounded-3xl p-4 flex-row items-center" style={{ backgroundColor: colors.surface }}>
+                <ProgressRing
+                    progress={gam.xpProgress}
+                    size={72}
+                    strokeWidth={6}
+                    color="#F59E0B"
+                    bgColor={colors.surfaceSecondary}
+                >
+                    <Text style={{ fontSize: 22, fontWeight: '900', color: colors.text }}>{gam.currentLevel}</Text>
+                </ProgressRing>
+                <View className="flex-1 ml-4">
+                    <Text className="text-xs font-bold" style={{ color: colors.textSecondary }}>LEVEL {gam.currentLevel}</Text>
+                    <Text className="text-2xl font-black mt-0.5" style={{ color: colors.text }}>{gam.totalXp} XP</Text>
+                    <View className="flex-row items-center mt-2">
+                        <View className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: colors.surfaceSecondary }}>
+                            <View className="h-full rounded-full" style={{ width: `${Math.max(2, gam.xpProgress * 100)}%`, backgroundColor: '#F59E0B' }} />
+                        </View>
+                        <Text className="text-xs font-semibold ml-2" style={{ color: colors.textSecondary }}>{gam.xpInCurrentLevel}/{gam.xpToNextLevel}</Text>
+                    </View>
+                </View>
+            </View>
+        </View>
+    );
+}
+
+function BadgeProgressCard({ colors, badgeProgress, totalEntries }: { colors: ThemeColors; badgeProgress?: InsightsResponse['badgeProgress']; totalEntries: number }) {
+    const earned = badgeProgress?.earned ?? [];
+    return (
+        <View className="px-4 mb-4">
+            <View className="rounded-3xl p-4" style={{ backgroundColor: colors.surface }}>
+                <View className="flex-row items-center mb-3">
+                    <MaterialCommunityIcons name="shield-star" size={18} color="#8B5CF6" />
+                    <Text className="text-[17px] font-extrabold ml-2" style={{ color: colors.text }}>Badge Progress</Text>
+                    {badgeProgress?.nextBadge && (
+                        <View className="ml-auto rounded-full px-2.5 py-1" style={{ backgroundColor: '#F5F0FF' }}>
+                            <Text className="text-xs font-bold" style={{ color: '#8B5CF6' }}>{badgeProgress.entriesUntilNext} to go</Text>
+                        </View>
+                    )}
+                </View>
+                <View className="flex-row justify-around">
+                    {BADGE_DATA.map((badge) => {
+                        const isEarned = earned.includes(badge.id);
+                        const progress = Math.min(1, totalEntries / badge.required);
+                        return (
+                            <View key={badge.id} className="items-center">
+                                <ProgressRing
+                                    progress={isEarned ? 1 : progress}
+                                    size={48}
+                                    strokeWidth={3}
+                                    color={isEarned ? badge.color : '#93C5FD'}
+                                    bgColor={colors.surfaceSecondary}
+                                >
+                                    <MaterialCommunityIcons
+                                        name={badge.icon as any}
+                                        size={18}
+                                        color={isEarned ? badge.color : colors.textSecondary}
+                                    />
+                                </ProgressRing>
+                                {isEarned && <Text className="text-[9px] font-bold mt-1" style={{ color: badge.color }}>EARNED</Text>}
+                            </View>
+                        );
+                    })}
+                </View>
+            </View>
+        </View>
+    );
+}
+
 export default function Insights() {
     const { appMode } = useStorage();
     const { colors, isDark } = useTheme();
@@ -92,7 +160,7 @@ export default function Insights() {
         }
     };
 
-    const stats = data?.stats || {};
+    const stats = data?.stats ?? {} as Partial<InsightsResponse['stats']>;
     const moodTimeline = data?.moodTimeline || [];
     const writingTrend = data?.writingTrend || [];
     const weeklyEntries = data?.weeklyEntries || [];
@@ -167,6 +235,9 @@ export default function Insights() {
                     </View>
                 ) : (
                     <>
+                        {/* XP & Level Card */}
+                        <XpLevelCard colors={colors} />
+
                         <View className="px-4 mb-4">
                             <View className="flex-row gap-2.5">
                                 <StatCard icon={<Ionicons name="document-text" size={20} color="#4F6BFF" />} title="Total Entries" value={`${stats.totalEntries ?? '—'}`} subtitle="This period" color="#4F6BFF" colors={colors} />
@@ -177,6 +248,9 @@ export default function Insights() {
                                 <StatCard icon={<Ionicons name="trending-up" size={20} color="#10B981" />} title="Best Streak" value={`${stats.bestStreak ?? '—'}`} subtitle="Days" color="#10B981" colors={colors} />
                             </View>
                         </View>
+
+                        {/* Badge Progress */}
+                        <BadgeProgressCard colors={colors} badgeProgress={data?.badgeProgress} totalEntries={stats.totalEntries ?? 0} />
 
                         {moodBarData.length > 0 && (
                             <View className="px-4 mb-4">

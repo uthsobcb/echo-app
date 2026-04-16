@@ -1,10 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../service/api';
-import { config } from '../service/config';
 import { logger } from '../service/logger';
 import { setupNotifications } from '../service/NotificationService';
-import { Entry, Stats, User } from '../types/data';
+import { Entry, MoodCreateResponse, Stats, StreakData, User } from '../types/data';
 
 type AppMode = 'local' | 'api';
 
@@ -20,7 +19,7 @@ interface StorageContextType {
     loginWithGoogle: (idToken: string) => Promise<void>;
     registerAPI: (formData: FormData) => Promise<void>;
     logout: () => Promise<void>;
-    addEntry: (entry: Omit<Entry, 'id' | 'createdAt'>) => Promise<Entry | void>;
+    addEntry: (entry: Omit<Entry, 'id' | 'createdAt'>) => Promise<(Entry & { streakData?: StreakData }) | void>;
     deleteEntry: (id: string) => Promise<void>;
     updateEntry: (id: string, updates: Partial<Entry>) => Promise<void>;
     updateUser: (user: Partial<User>) => Promise<void>;
@@ -142,10 +141,22 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const addEntry = async (newEntryData: Omit<Entry, 'id' | 'createdAt'>) => {
         if (appMode === 'api') {
-            const result = await api.mood.create(newEntryData.content, newEntryData.imgUrl);
-            setEntries([result, ...entries]);
-            setStats(prev => ({ ...prev, entries: prev.entries + 1 }));
-            return result;
+            const result: MoodCreateResponse = await api.mood.create(newEntryData.content, newEntryData.imgUrl);
+            const entry: Entry & { streakData?: StreakData } = {
+                ...newEntryData,
+                mood: result.mood,
+                score: result.score,
+                comment: result.comment,
+                createdAt: new Date().toISOString(),
+                streakData: result.streakData,
+            };
+            setEntries([entry, ...entries]);
+            setStats(prev => ({
+                ...prev,
+                entries: prev.entries + 1,
+                streak: result.streakData?.currentStreak ?? prev.streak,
+            }));
+            return entry;
         } else {
             const newEntry: Entry = {
                 ...newEntryData,
@@ -236,13 +247,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // Attempt to invalidate the server session before clearing local state
         if (appMode === 'api') {
             try {
-                const token = await AsyncStorage.getItem('token');
-                if (token) {
-                    await fetch(`${config.API_BASE_URL}/auth/logout`, {
-                        method: 'POST',
-                        headers: { Authorization: `Bearer ${token}` },
-                    }).catch(() => { /* best-effort */ });
-                }
+                await api.auth.logout();
             } catch {
                 // Server logout is best-effort; proceed with local cleanup
             }

@@ -59,7 +59,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const loadFromAPI = useCallback(async () => {
         try {
-            const history = await api.chat.getHistory();
+            const history = await api.chat.getAll();
             const formatted: LocalConversation[] = history.map((h: Chat) => ({
                 id: h._id,
                 title: h.threadSummary || 'New Conversation',
@@ -172,7 +172,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             const botMessage: LocalMessage = {
                 id: `${targetId}-${Date.now()}-bot`,
-                text: result.message,
+                text: result.reply,
                 sender: 'bot',
                 timestamp: Date.now(),
                 status: 'sent',

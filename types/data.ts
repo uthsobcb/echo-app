@@ -9,6 +9,11 @@ export interface User {
     badge?: string[];
     streak?: number;
     currentStreak?: number;
+    maxStreak?: number;
+    totalXp?: number;
+    lastEntryDate?: string;
+    timezone?: string;
+    pushToken?: string;
     tasks?: number;
     wantsWeeklyReport?: boolean;
     createdAt?: string;
@@ -27,6 +32,37 @@ export interface Entry {
     todo?: string[] | { todo: string; type?: string; status?: string }[];
     createdAt: number | string; // Timestamp (Local) or ISO date (API)
     date?: string;       // ISO string (Local)
+}
+
+export interface StreakData {
+    currentStreak: number;
+    totalXp: number;
+    milestone: string | null;
+}
+
+export interface MoodCreateResponse {
+    message: string;
+    mood: string;
+    comment: string;
+    score: number;
+    todo: { todo: string; type?: string; status?: string }[];
+    streakData: StreakData;
+}
+
+export interface MoodHistoryItem {
+    mood: string;
+    score: number;
+    _id: string;
+    createdAt?: string;
+}
+
+export interface Todo {
+    _id: string;
+    userId: string;
+    todo: string;
+    type?: string;
+    status: 'pending' | 'in progress' | 'completed';
+    createdAt: string;
 }
 
 export interface ChatMessage {
@@ -60,12 +96,121 @@ export interface Chat {
     updatedAt?: string;
 }
 
+export interface ChatSendResponse {
+    reply: string;
+    chatId: string;
+    messages: ChatMessage[];
+}
+
 export interface SpaceDrawStatus {
     drawCount: number;
     canDraw: boolean;
     requiresMessage: boolean;
     nextAvailableAt?: string;
 }
+
+export interface SpaceMessage {
+    _id: string;
+    content: string;
+    author: string;
+    createdAt: string;
+}
+
+export interface LeaderboardEntry {
+    _id: string;
+    count: number;
+    name: string;
+    image?: string;
+}
+
+export interface Post {
+    _id: string;
+    title: string;
+    content: string;
+    slug: string;
+    author?: string;
+    published: boolean;
+    coverImage?: string;
+    excerpt?: string;
+    tags?: string[];
+    createdAt: string;
+}
+
+export interface Notification {
+    _id: string;
+    userId: string | null;
+    title: string;
+    body: string;
+    type: 'JOURNAL_REMINDER' | 'STREAK_RECOVERY' | 'TODO_REMINDER' | 'CUSTOM' | 'SYSTEM';
+    data?: Record<string, unknown>;
+    scheduledAt?: string;
+    sentAt?: string | null;
+    createdAt: string;
+}
+
+export interface InsightsResponse {
+    stats: {
+        totalEntries: number;
+        currentStreak: number;
+        bestStreak: number;
+        avgWordCount: number;
+    };
+    moodTimeline: { day: string; date: string; mood: string; score: number }[];
+    writingTrend: { label: string; count: number }[];
+    weeklyEntries: { label: string; count: number }[];
+    topTopics: { topic: string; count: number }[];
+    commonWords: { word: string; frequency: number }[];
+    activityCalendar: { date: string; hasEntry: boolean }[];
+    aiInsights: string[];
+    writingTrendComparison: string;
+    badgeProgress: {
+        earned: string[];
+        nextBadge: string | null;
+        nextBadgeAt: number | null;
+        entriesUntilNext: number;
+        milestones: { name: string; threshold: number; earned: boolean }[];
+    };
+    xpStatus: {
+        totalXp: number;
+        currentStreak: number;
+        maxStreak: number;
+        subscription: string;
+    };
+}
+
+export interface AdminStats {
+    users: User[];
+    entries: number;
+    mood: Record<string, unknown>[];
+}
+
+// ─── Gamification ────────────────────────────────────────────────
+
+export interface GamificationState {
+    totalXp: number;
+    currentLevel: number;
+    xpInCurrentLevel: number;
+    xpToNextLevel: number;
+    xpProgress: number; // 0–1
+    currentStreak: number;
+    maxStreak: number;
+    hasJournaledToday: boolean;
+    streakAtRisk: boolean;
+    earnedBadges: string[];
+    nextBadge: string | null;
+    nextBadgeAt: number | null;
+    entriesUntilNextBadge: number;
+    dailyGoalMet: boolean;
+    totalEntries: number;
+}
+
+export type CelebrationType =
+    | { type: 'xp_gain'; amount: number }
+    | { type: 'streak_update'; days: number }
+    | { type: 'streak_milestone'; days: number; milestone: string }
+    | { type: 'badge_unlock'; badge: string }
+    | { type: 'level_up'; newLevel: number; previousLevel: number }
+    | { type: 'daily_goal_complete' };
 
 export interface AuthResponse {
     token?: string;

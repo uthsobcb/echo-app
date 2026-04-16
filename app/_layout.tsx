@@ -1,6 +1,8 @@
 import "../global.css";
 
+import CelebrationOverlay from "@/component/gamification/CelebrationOverlay";
 import ErrorBoundary from "@/component/ErrorBoundary";
+import { GamificationProvider } from "@/context/GamificationContext";
 import { StorageProvider } from "@/context/StorageContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { scheduleDailyReminder, setupNotifications } from "@/service/NotificationService";
@@ -45,7 +47,10 @@ export default function RootLayout() {
     <ErrorBoundary>
       <ThemeProvider>
         <StorageProvider>
-          <Slot />
+          <GamificationProvider>
+            <Slot />
+            <CelebrationOverlay />
+          </GamificationProvider>
         </StorageProvider>
       </ThemeProvider>
     </ErrorBoundary>

@@ -68,7 +68,7 @@ export default function Space() {
                 api.space.getMessage(),
             ]);
             setDrawStatus(status);
-            setMessages(Array.isArray(msgs) ? msgs : msgs.messages || [msgs]);
+            setMessages(Array.isArray(msgs) ? msgs : msgs.data ? [msgs.data] : []);
         } catch (e) {
             logger.error('[Space] loadData failed', e);
         } finally {

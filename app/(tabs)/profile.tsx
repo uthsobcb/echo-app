@@ -1,3 +1,5 @@
+import ProgressRing from '@/component/gamification/ProgressRing';
+import { useGamification } from '@/context/GamificationContext';
 import { useStorage } from '@/context/StorageContext';
 import { useTheme, ThemeColors } from '@/context/ThemeContext';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -51,13 +53,14 @@ function BadgeDetailModal({ badge, isEarned, onClose, entriesCount, colors }: { 
 export default function Profile() {
     const { user, logout, stats, appMode } = useStorage();
     const { colors, isDark, setDarkMode } = useTheme();
+    const { state: gam } = useGamification();
     const isLocal = appMode === 'local';
     const [notifications, setNotifications] = useState(true);
     const [reminder, setReminder] = useState(true);
     const [selectedBadge, setSelectedBadge] = useState<typeof ALL_BADGES[0] | null>(null);
 
-    const earnedBadges = user.badge || [];
-    const entriesCount = stats.entries || 0;
+    const earnedBadges = gam.earnedBadges.length > 0 ? gam.earnedBadges : (user.badge || []);
+    const entriesCount = gam.totalEntries || stats.entries || 0;
 
     const switchProps = (value: boolean, onChange: (v: boolean) => void) => ({
         value,
@@ -70,62 +73,30 @@ export default function Profile() {
         const safe: ViewStyle = { flex: 1, backgroundColor: colors.background };
         const pageTitle: TextStyle = { fontSize: 26, fontWeight: '800', color: colors.text };
         const localBanner: ViewStyle = {
-            marginHorizontal: 16,
-            marginBottom: 12,
-            backgroundColor: colors.surfaceSecondary,
-            borderRadius: 14,
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: 14,
+            marginHorizontal: 16, marginBottom: 12, backgroundColor: colors.surfaceSecondary,
+            borderRadius: 14, flexDirection: 'row', alignItems: 'center', padding: 14,
         };
         const localTitle: TextStyle = { fontSize: 14, fontWeight: '700', color: colors.primary };
         const localSub: TextStyle = { fontSize: 12, color: colors.textSecondary, marginTop: 2 };
         const sectionLabel: TextStyle = {
-            fontSize: 11,
-            fontWeight: '700',
-            color: colors.textSecondary,
-            letterSpacing: 1.2,
-            marginHorizontal: 20,
-            marginTop: 20,
-            marginBottom: 8,
+            fontSize: 11, fontWeight: '700', color: colors.textSecondary,
+            letterSpacing: 1.2, marginHorizontal: 20, marginTop: 20, marginBottom: 8,
         };
         const card: ViewStyle = {
-            marginHorizontal: 16,
-            backgroundColor: colors.surface,
-            borderRadius: 18,
-            overflow: 'hidden' as const,
-            shadowColor: '#000',
-            shadowOpacity: 0.04,
-            shadowRadius: 8,
-            elevation: 1,
-            borderWidth: 1,
-            borderColor: colors.border,
+            marginHorizontal: 16, backgroundColor: colors.surface, borderRadius: 18,
+            overflow: 'hidden' as const, shadowColor: '#000', shadowOpacity: 0.04,
+            shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: colors.border,
         };
-        const settingRow: ViewStyle = {
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 14,
-        };
+        const settingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 };
         const settingIcon: ViewStyle = {
-            width: 36,
-            height: 36,
-            backgroundColor: colors.surfaceSecondary,
-            borderRadius: 10,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 12,
+            width: 36, height: 36, backgroundColor: colors.surfaceSecondary,
+            borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12,
         };
         const settingTitle: TextStyle = { fontSize: 15, fontWeight: '600', color: colors.text };
         const settingSubtitle: TextStyle = { fontSize: 12, color: colors.textSecondary, marginTop: 1 };
         const divider: ViewStyle = { height: 1, backgroundColor: colors.borderSecondary, marginLeft: 64 };
         const footer: TextStyle = { textAlign: 'center' as const, color: colors.textSecondary, fontSize: 12, marginTop: 24 };
-        const badgeItemName: TextStyle = {
-            fontSize: 11,
-            fontWeight: '700',
-            color: colors.text,
-            textAlign: 'center' as const,
-        };
+        const badgeItemName: TextStyle = { fontSize: 11, fontWeight: '700', color: colors.text, textAlign: 'center' as const };
         return { safe, pageTitle, localBanner, localTitle, localSub, sectionLabel, card, settingRow, settingIcon, settingTitle, settingSubtitle, divider, footer, badgeItemName };
     }, [colors]);
 
@@ -152,15 +123,24 @@ export default function Profile() {
                     </View>
                 )}
 
+                {/* ── Profile Card with Level Ring ── */}
                 <LinearGradient colors={['#4F6BFF', '#7B3FE4']} style={styles.profileCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                     <View style={styles.avatarWrap}>
-                        <Image
-                            source={user.image ? { uri: user.image } : user.avatar ? { uri: user.avatar } : require('../../assets/images/avatar.png')}
-                            style={styles.avatarImg}
-                        />
-                        <TouchableOpacity style={styles.cameraBadge}>
-                            <Feather name="camera" size={13} color="#fff" />
-                        </TouchableOpacity>
+                        <ProgressRing
+                            progress={gam.xpProgress}
+                            size={100}
+                            strokeWidth={4}
+                            color="#FCD34D"
+                            bgColor="rgba(255,255,255,0.25)"
+                        >
+                            <Image
+                                source={user.image ? { uri: user.image } : user.avatar ? { uri: user.avatar } : require('../../assets/images/avatar.png')}
+                                style={styles.avatarImg}
+                            />
+                        </ProgressRing>
+                        <View style={styles.levelBadge}>
+                            <Text style={styles.levelBadgeText}>{gam.currentLevel}</Text>
+                        </View>
                     </View>
                     <Text style={styles.profileName}>{user.name}</Text>
                     <Text style={styles.profileEmail}>{isLocal ? 'Offline Mode' : (user.email || 'Cloud Member')}</Text>
@@ -173,27 +153,37 @@ export default function Profile() {
 
                     <View style={styles.statsRow}>
                         <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{entriesCount}</Text>
-                            <Text style={styles.statLabel}>Entries</Text>
+                            <Text style={styles.statValue}>{gam.totalXp}</Text>
+                            <Text style={styles.statLabel}>Total XP</Text>
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{stats.streak}</Text>
+                            <Text style={styles.statValue}>{gam.currentStreak}</Text>
                             <Text style={styles.statLabel}>Streak</Text>
                         </View>
                         <View style={styles.statDivider} />
                         <View style={styles.statItem}>
-                            <Text style={styles.statValue}>{earnedBadges.length}</Text>
-                            <Text style={styles.statLabel}>Awards</Text>
+                            <Text style={styles.statValue}>{earnedBadges.length}/{ALL_BADGES.length}</Text>
+                            <Text style={styles.statLabel}>Badges</Text>
                         </View>
+                    </View>
+
+                    {/* XP to next level bar */}
+                    <View style={styles.xpBarWrap}>
+                        <View style={styles.xpBarBg}>
+                            <View style={[styles.xpBarFill, { width: `${Math.max(2, gam.xpProgress * 100)}%` }]} />
+                        </View>
+                        <Text style={styles.xpBarText}>{gam.xpInCurrentLevel}/{gam.xpToNextLevel} XP to Level {gam.currentLevel + 1}</Text>
                     </View>
                 </LinearGradient>
 
+                {/* ── Badge Showcase ── */}
                 <Text style={dynamicStyles.sectionLabel}>BADGE SHOWCASE</Text>
                 <View style={dynamicStyles.card}>
                     <View style={styles.badgeGrid}>
                         {ALL_BADGES.map((badge) => {
                             const isEarned = earnedBadges.includes(badge.id);
+                            const progress = Math.min(1, entriesCount / badge.required);
                             return (
                                 <TouchableOpacity
                                     key={badge.id}
@@ -201,21 +191,29 @@ export default function Profile() {
                                     onPress={() => setSelectedBadge(badge)}
                                     activeOpacity={0.7}
                                 >
-                                    <View style={[
-                                        styles.badgeIconBg,
-                                        { backgroundColor: isEarned ? badge.color + '20' : colors.surfaceSecondary }
-                                    ]}>
-                                        <MaterialCommunityIcons
-                                            name={badge.icon as any}
-                                            size={28}
-                                            color={isEarned ? badge.color : colors.textSecondary}
-                                        />
-                                        {!isEarned && (
-                                            <View style={styles.lockOverlay}>
-                                                <Ionicons name="lock-closed" size={10} color="#fff" />
-                                            </View>
-                                        )}
-                                    </View>
+                                    <ProgressRing
+                                        progress={isEarned ? 1 : progress}
+                                        size={68}
+                                        strokeWidth={4}
+                                        color={isEarned ? badge.color : '#93C5FD'}
+                                        bgColor={colors.surfaceSecondary}
+                                    >
+                                        <View style={[
+                                            styles.badgeIconInner,
+                                            { backgroundColor: isEarned ? badge.color + '20' : colors.surfaceSecondary }
+                                        ]}>
+                                            <MaterialCommunityIcons
+                                                name={badge.icon as any}
+                                                size={24}
+                                                color={isEarned ? badge.color : colors.textSecondary}
+                                            />
+                                        </View>
+                                    </ProgressRing>
+                                    {!isEarned && (
+                                        <View style={styles.lockOverlay}>
+                                            <Ionicons name="lock-closed" size={10} color="#fff" />
+                                        </View>
+                                    )}
                                     <Text
                                         style={[styles.badgeItemName, dynamicStyles.badgeItemName, !isEarned && { color: colors.textSecondary }]}
                                         numberOfLines={1}
@@ -226,6 +224,13 @@ export default function Profile() {
                             );
                         })}
                     </View>
+                    {gam.nextBadge && (
+                        <View style={[styles.nextBadgeBanner, { backgroundColor: colors.surfaceSecondary }]}>
+                            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>
+                                {gam.entriesUntilNextBadge} entries until "{gam.nextBadge}"
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 <BadgeDetailModal
@@ -235,6 +240,25 @@ export default function Profile() {
                     onClose={() => setSelectedBadge(null)}
                     colors={colors}
                 />
+
+                {/* ── Journaling Stats ── */}
+                <Text style={dynamicStyles.sectionLabel}>JOURNALING STATS</Text>
+                <View style={dynamicStyles.card}>
+                    <View style={[dynamicStyles.settingRow, { justifyContent: 'space-around' }]}>
+                        <View style={{ alignItems: 'center' }}>
+                            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>{entriesCount}</Text>
+                            <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '600' }}>Entries</Text>
+                        </View>
+                        <View style={{ alignItems: 'center' }}>
+                            <Text style={{ fontSize: 22, fontWeight: '800', color: '#F59E0B' }}>{gam.currentStreak}</Text>
+                            <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '600' }}>Current</Text>
+                        </View>
+                        <View style={{ alignItems: 'center' }}>
+                            <Text style={{ fontSize: 22, fontWeight: '800', color: '#10B981' }}>{gam.maxStreak}</Text>
+                            <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '600' }}>Best</Text>
+                        </View>
+                    </View>
+                </View>
 
                 <Text style={dynamicStyles.sectionLabel}>ACCOUNT</Text>
                 <View style={dynamicStyles.card}>
@@ -260,7 +284,7 @@ export default function Profile() {
                         <View style={dynamicStyles.settingIcon}><Ionicons name="card-outline" size={19} color={colors.primary} /></View>
                         <View style={{ flex: 1 }}>
                             <Text style={dynamicStyles.settingTitle}>Subscription</Text>
-                            <Text style={dynamicStyles.settingSubtitle}>Pro Plan · Renews Jan 2027</Text>
+                            <Text style={dynamicStyles.settingSubtitle}>{user.subscription ? `${user.subscription.charAt(0).toUpperCase() + user.subscription.slice(1)} Plan` : 'Free Plan'}</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                     </View>
@@ -324,7 +348,7 @@ export default function Profile() {
                     <Text style={styles.logoutText}>Log Out</Text>
                 </TouchableOpacity>
 
-                <Text style={dynamicStyles.footer}>Made with 💙 by Echo Team · v1.0.0</Text>
+                <Text style={dynamicStyles.footer}>Made with Echo Team v1.0.0</Text>
             </ScrollView>
         </SafeAreaView>
     );
@@ -337,22 +361,28 @@ const styles = StyleSheet.create({
     syncBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
     profileCard: { marginHorizontal: 16, borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 8 },
     avatarWrap: { position: 'relative', marginBottom: 12 },
-    avatarImg: { width: 88, height: 88, borderRadius: 44, borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' },
-    cameraBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 14, padding: 6 },
+    avatarImg: { width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' },
+    levelBadge: { position: 'absolute', bottom: -4, right: -4, backgroundColor: '#FCD34D', borderRadius: 14, width: 28, height: 28, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#7B3FE4' },
+    levelBadgeText: { fontSize: 12, fontWeight: '900', color: '#78350F' },
     profileName: { fontSize: 20, fontWeight: '800', color: '#fff' },
     profileEmail: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4 },
     subPill: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, marginTop: 8 },
     subPillText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-    statsRow: { flexDirection: 'row', marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', width: '100%' },
+    statsRow: { flexDirection: 'row', marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', width: '100%' },
     statItem: { flex: 1, alignItems: 'center' },
-    statValue: { fontSize: 24, fontWeight: '800', color: '#fff' },
+    statValue: { fontSize: 22, fontWeight: '800', color: '#fff' },
     statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
     statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+    xpBarWrap: { width: '100%', marginTop: 16 },
+    xpBarBg: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' },
+    xpBarFill: { height: '100%', borderRadius: 3, backgroundColor: '#FCD34D' },
+    xpBarText: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600', marginTop: 6, textAlign: 'center' },
     badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 10, gap: 12, justifyContent: 'center' },
-    badgeItem: { width: '30%', alignItems: 'center', marginBottom: 10 },
-    badgeIconBg: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 8, position: 'relative' },
-    lockOverlay: { position: 'absolute', bottom: -2, right: -2, backgroundColor: '#B0BAD0', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
-    badgeItemName: { textAlign: 'center' },
+    badgeItem: { width: '30%', alignItems: 'center', marginBottom: 10, position: 'relative' },
+    badgeIconInner: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+    lockOverlay: { position: 'absolute', top: 48, right: '25%', backgroundColor: '#B0BAD0', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+    badgeItemName: { textAlign: 'center', marginTop: 4 },
+    nextBadgeBanner: { marginHorizontal: 10, marginBottom: 10, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center' },
     logoutBtn: { marginHorizontal: 16, marginTop: 24, backgroundColor: '#FEF2F2', borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, gap: 8 },
     logoutText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
