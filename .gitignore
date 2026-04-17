@@ -43,3 +43,7 @@ app-example
 # generated native folders
 /ios
 /android
+android/app/*.jks
+android/app/*.keystore
+release-artifacts/.keystore-secrets.env
+release-artifacts/**/keystore/*
