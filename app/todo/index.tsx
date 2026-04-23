@@ -1,5 +1,6 @@
 import { useStorage } from '@/context/StorageContext';
 import { api } from '@/service/api';
+import { scheduleTodoDailyReminder } from '@/service/NotificationService';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -40,7 +41,11 @@ export default function TodoList() {
         }
         try {
             const data = await api.todo.getAll();
-            setTodos(data?.todos || []);
+            const fetched: TodoItem[] = data?.todos || [];
+            setTodos(fetched);
+
+            const pending = fetched.filter(t => t.status === 'pending');
+            scheduleTodoDailyReminder(pending.length, pending[0]?.todo).catch(() => {});
         } catch (error) {
             logger.error('Failed to fetch todos:', error);
         } finally {

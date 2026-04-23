@@ -397,15 +397,22 @@ success "Patched android/app/build.gradle for env/property signing"
 update_gitignore
 success "Updated .gitignore with release security entries"
 
+BUILD_GRADLE="$ANDROID_DIR/app/build.gradle"
+CURRENT_VERSION_CODE=$(grep -E '^\s+versionCode\s+[0-9]+' "$BUILD_GRADLE" | grep -oE '[0-9]+')
+NEW_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
+sed -i '' "s/^\(\s*versionCode\s*\)$CURRENT_VERSION_CODE$/\1$NEW_VERSION_CODE/" "$BUILD_GRADLE"
+info "versionCode: $CURRENT_VERSION_CODE → $NEW_VERSION_CODE"
+
 info "Building release AAB + APK..."
 (
   cd "$ANDROID_DIR"
   chmod +x gradlew
+  rm -rf "$ANDROID_DIR/app/.cxx"
   MYAPP_RELEASE_STORE_FILE="$KEYSTORE_FILENAME" \
   MYAPP_RELEASE_KEY_ALIAS="$KEY_ALIAS" \
   MYAPP_RELEASE_STORE_PASSWORD="$STORE_PASSWORD" \
   MYAPP_RELEASE_KEY_PASSWORD="$KEY_PASSWORD" \
-  ./gradlew clean bundleRelease assembleRelease
+  ./gradlew clean :react-native-worklets:assembleRelease bundleRelease assembleRelease
 )
 success "Release build completed"
 
