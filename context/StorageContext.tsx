@@ -93,18 +93,21 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 const token = await AsyncStorage.getItem('token');
                 if (token) {
                     setIsAuthenticated(true);
+
                     const profileData = await api.profile.get();
-                    setUser({ ...profileData.user, isLocal: false });
+                    const userData = profileData.user || profileData;
+                    setUser({ ...(userData as User), isLocal: false });
 
                     const entriesData = await api.entries.getAll();
-                    setEntries(entriesData);
+                    setEntries(Array.isArray(entriesData) ? entriesData : []);
 
+                    const safeEntries = Array.isArray(entriesData) ? entriesData : [];
                     setStats({
-                        entries: entriesData.length,
-                        streak: profileData.user?.streak
-                            ?? profileData.user?.currentStreak
-                            ?? computeStreak(entriesData),
-                        tasks: profileData.user?.tasks ?? 0,
+                        entries: safeEntries.length,
+                        streak: (userData as User)?.streak
+                            ?? (userData as User)?.currentStreak
+                            ?? computeStreak(safeEntries),
+                        tasks: (userData as User)?.tasks ?? 0,
                     });
                 } else {
                     setAppMode('local');
