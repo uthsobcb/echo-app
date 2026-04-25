@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import React, { useState } from 'react'
+import { useTTSPrefs, TTSRate } from '../hooks/useTTSPrefs'
 import {
     View,
     Text,
@@ -19,6 +20,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
     const [theme, setTheme] = useState<'light' | 'dark'>('light')
     const [notifications, setNotifications] = useState(true)
+    const { enabled: ttsEnabled, rate: ttsRate, setEnabled: setTtsEnabled, setRate: setTtsRate } = useTTSPrefs()
 
     return (
         <Modal
@@ -168,6 +170,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                     </Text>
                                 </View>
                             </View>
+                        </View>
+                        {/* TTS Setting */}
+                        <View style={{ marginBottom: 24 }}>
+                            <Text style={{ marginBottom: 12, fontSize: 14, fontWeight: '600', color: '#0f172a' }}>
+                                Echo Voice
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                <Text style={{ fontSize: 14, color: '#334155' }}>Let Echo speak</Text>
+                                <TouchableOpacity
+                                    onPress={() => setTtsEnabled(!ttsEnabled)}
+                                    style={{
+                                        width: 48,
+                                        height: 28,
+                                        borderRadius: 14,
+                                        backgroundColor: ttsEnabled ? '#5B9BF8' : '#CBD5E1',
+                                        justifyContent: 'center',
+                                        paddingHorizontal: 3,
+                                    }}
+                                >
+                                    <View style={{
+                                        width: 22,
+                                        height: 22,
+                                        borderRadius: 11,
+                                        backgroundColor: '#fff',
+                                        alignSelf: ttsEnabled ? 'flex-end' : 'flex-start',
+                                    }} />
+                                </TouchableOpacity>
+                            </View>
+                            {ttsEnabled && (
+                                <View>
+                                    <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>Speed</Text>
+                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                        {([0.8, 1.0, 1.3] as TTSRate[]).map((r) => (
+                                            <TouchableOpacity
+                                                key={r}
+                                                onPress={() => setTtsRate(r)}
+                                                style={{
+                                                    flex: 1,
+                                                    paddingVertical: 8,
+                                                    borderRadius: 10,
+                                                    alignItems: 'center',
+                                                    backgroundColor: ttsRate === r ? '#5B9BF8' : '#F1F5F9',
+                                                    borderWidth: 1,
+                                                    borderColor: ttsRate === r ? '#5B9BF8' : '#E2E8F0',
+                                                }}
+                                            >
+                                                <Text style={{
+                                                    fontSize: 13,
+                                                    fontWeight: '600',
+                                                    color: ttsRate === r ? '#fff' : '#334155',
+                                                }}>
+                                                    {r === 0.8 ? 'Slow' : r === 1.0 ? 'Normal' : 'Fast'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
                         </View>
                     </ScrollView>
 
