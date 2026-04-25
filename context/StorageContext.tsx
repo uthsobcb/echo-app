@@ -286,11 +286,17 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setIsAuthenticated(false);
         await AsyncStorage.removeItem('isAuthenticated');
         await AsyncStorage.removeItem('token');
+        await AsyncStorage.removeItem(USERNAME_KEY);
+        await AsyncStorage.removeItem(ONBOARDING_GOALS_KEY);
+        await AsyncStorage.removeItem(ONBOARDING_KEY);
         setAppMode('local');
         await AsyncStorage.setItem('appMode', 'local');
         setUser(defaultUser);
         setEntries([]);
         setStats(defaultStats);
+        setUserName('');
+        setOnboardingGoals([]);
+        setOnboardingComplete(false);
     };
 
     const resetData = async () => {
@@ -301,6 +307,9 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setStats(defaultStats);
             setAppMode('local');
             setIsAuthenticated(false);
+            setUserName('');
+            setOnboardingGoals([]);
+            setOnboardingComplete(false);
         } catch (e) {
             logger.error('Failed to reset data', e);
         }
