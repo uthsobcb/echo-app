@@ -7,6 +7,10 @@ import { Entry, MoodCreateResponse, Stats, StreakData, User } from '../types/dat
 
 type AppMode = 'local' | 'api';
 
+const ONBOARDING_KEY = 'onboardingComplete';
+const USERNAME_KEY = 'userName';
+const ONBOARDING_GOALS_KEY = 'onboardingGoals';
+
 interface StorageContextType {
     user: User;
     entries: Entry[];
@@ -25,6 +29,10 @@ interface StorageContextType {
     updateUser: (user: Partial<User>) => Promise<void>;
     resetData: () => Promise<void>;
     toggleMode: (mode: AppMode) => Promise<void>;
+    userName: string;
+    onboardingGoals: string[];
+    onboardingComplete: boolean;
+    completeOnboarding: (data: { userName: string; onboardingGoals: string[] }) => Promise<void>;
 }
 
 const defaultUser: User = {
@@ -47,6 +55,9 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [appMode, setAppMode] = useState<AppMode>('local');
+    const [userName, setUserName] = useState('');
+    const [onboardingGoals, setOnboardingGoals] = useState<string[]>([]);
+    const [onboardingComplete, setOnboardingComplete] = useState(false);
 
     useEffect(() => {
         init();
@@ -57,12 +68,31 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const storedMode = await AsyncStorage.getItem('appMode') as AppMode;
             const mode = storedMode || 'local';
             setAppMode(mode);
+            const [storedName, storedGoals, storedOnboarding] = await Promise.all([
+                AsyncStorage.getItem(USERNAME_KEY),
+                AsyncStorage.getItem(ONBOARDING_GOALS_KEY),
+                AsyncStorage.getItem(ONBOARDING_KEY),
+            ]);
+            if (storedName) setUserName(storedName);
+            if (storedGoals) setOnboardingGoals(JSON.parse(storedGoals));
+            if (storedOnboarding) setOnboardingComplete(storedOnboarding === 'true');
             await loadData(mode);
         } catch (error) {
             logger.error('Failed to initialize', error);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const completeOnboarding = async (data: { userName: string; onboardingGoals: string[] }) => {
+        setUserName(data.userName);
+        setOnboardingGoals(data.onboardingGoals);
+        setOnboardingComplete(true);
+        await Promise.all([
+            AsyncStorage.setItem(USERNAME_KEY, data.userName),
+            AsyncStorage.setItem(ONBOARDING_GOALS_KEY, JSON.stringify(data.onboardingGoals)),
+            AsyncStorage.setItem(ONBOARDING_KEY, 'true'),
+        ]);
     };
 
     // Compute streak from entries: count consecutive days up to today
@@ -334,6 +364,10 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 updateUser,
                 resetData,
                 toggleMode,
+                userName,
+                onboardingGoals,
+                onboardingComplete,
+                completeOnboarding,
             }}
         >
             {children}
