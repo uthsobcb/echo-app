@@ -1,10 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../service/api';
 import { logger } from '../service/logger';
 import { Chat, LocalConversation, LocalMessage } from '../types/data';
 
 const STORAGE_KEY = 'chat_conversations';
+
+const ECHO_SYSTEM_PROMPT =
+  'You are Echo, a gentle cloud spirit who listens deeply and responds with warmth. ' +
+  'Adapt your tone: playful when the user is light, calm when they need grounding, ' +
+  'wise when they ask deep questions. Always speak as Echo, never break character. ' +
+  'Keep responses concise — you speak, not lecture.';
 
 interface ChatContextType {
     conversations: LocalConversation[];
@@ -20,6 +26,7 @@ interface ChatContextType {
     selectConversation: (id: string) => void;
     clearCurrentConversation: () => void;
     retryMessage: (messageId: string) => Promise<void>;
+    lastBotText: string;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -92,7 +99,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             messages: [
                 {
                     id: `${newId}-welcome`,
-                    text: 'Hi there! 👋 How can I help you today?',
+                    text: "Hey... I'm Echo. ☁️ I'm here — what's on your mind?",
                     sender: 'bot',
                     timestamp: Date.now(),
                     status: 'sent',
@@ -168,7 +175,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             // Don't send local temp IDs to the API — let the backend create a new chat
             const apiChatId = isLocalId(targetId) ? undefined : targetId;
-            const result = await api.chat.sendMessage(text, apiChatId);
+            const result = await api.chat.sendMessage(text, apiChatId, ECHO_SYSTEM_PROMPT);
 
             const botMessage: LocalMessage = {
                 id: `${targetId}-${Date.now()}-bot`,
@@ -253,6 +260,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await sendMessage(retryText, targetId);
     }, [conversations, currentConversationId, sendMessage]);
 
+    const lastBotText = useMemo(() => {
+        if (!currentConversation) return '';
+        const botMessages = currentConversation.messages.filter(m => m.sender === 'bot');
+        return botMessages[botMessages.length - 1]?.text ?? '';
+    }, [currentConversation]);
+
     return (
         <ChatContext.Provider
             value={{
@@ -269,6 +282,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 selectConversation,
                 clearCurrentConversation,
                 retryMessage,
+                lastBotText,
             }}
         >
             {children}

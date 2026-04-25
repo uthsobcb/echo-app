@@ -276,11 +276,11 @@ export const api = {
 
     // ─── Chat ────────────────────────────────────────────────────────
     chat: {
-        sendMessage: async (message: string, chatId?: string) => {
+        sendMessage: async (message: string, chatId?: string, systemPrompt?: string) => {
             const response = await fetch(`${BASE_URL}/chat`, {
                 method: 'POST',
                 headers: await getHeaders(),
-                body: JSON.stringify({ message, chatId }),
+                body: JSON.stringify({ message, chatId, systemPrompt }),
             });
             return handleResponse(response) as Promise<ChatSendResponse>;
         },
