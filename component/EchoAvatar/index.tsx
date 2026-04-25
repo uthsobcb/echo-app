@@ -1,6 +1,6 @@
 // component/EchoAvatar/index.tsx
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Svg, { Circle, Ellipse, Path, G } from 'react-native-svg';
 import Animated, {
   Easing,
@@ -25,6 +25,15 @@ interface EchoAvatarProps {
 const VIEWBOX_W = 200;
 const VIEWBOX_H = 160;
 
+const SPARKLE_STAR = 'M 0 -4 L 1 -1 L 4 0 L 1 1 L 0 4 L -1 1 L -4 0 L -1 -1 Z';
+const SPARKLE_POSITIONS = [
+  { x: 32, y: 52 },
+  { x: 168, y: 48 },
+  { x: 24, y: 92 },
+  { x: 176, y: 86 },
+  { x: 100, y: 22 },
+];
+
 function CloudShape({ color }: { color: string }) {
   return (
     <G>
@@ -39,20 +48,12 @@ function CloudShape({ color }: { color: string }) {
 }
 
 function Sparkles({ opacity }: { opacity: number }) {
-  const STAR = 'M 0 -4 L 1 -1 L 4 0 L 1 1 L 0 4 L -1 1 L -4 0 L -1 -1 Z';
-  const positions = [
-    { x: 32, y: 52 },
-    { x: 168, y: 48 },
-    { x: 24, y: 92 },
-    { x: 176, y: 86 },
-    { x: 100, y: 22 },
-  ];
   return (
     <G opacity={opacity}>
-      {positions.map((pos, i) => (
+      {SPARKLE_POSITIONS.map((pos, i) => (
         <Path
           key={i}
-          d={STAR}
+          d={SPARKLE_STAR}
           fill="#FFD700"
           transform={`translate(${pos.x}, ${pos.y})`}
         />
@@ -193,7 +194,7 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
   const config = EXPRESSIONS[expression];
   // TODO: colors.echoCloud will be added in Task 3 (ThemeContext update).
   // Using type assertion here to avoid blocking this component on that task.
-  const cloudColor = (colors as any).echoCloud ?? '#D0D8FF';
+  const cloudColor = (colors as any).echoCloud ?? '#D6EAFF';
   const textColor = colors.text;
 
   return (
