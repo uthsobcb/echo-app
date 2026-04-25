@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import * as Speech from 'expo-speech';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Alert,
@@ -15,9 +16,11 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { EchoAvatar, ExpressionName } from '../../component/EchoAvatar';
 import { TypingIndicator } from '../../component/TypingIndicator';
 import { useChat } from '../../context/ChatContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useTTSPrefs } from '../../hooks/useTTSPrefs';
 import { LocalMessage } from '../../types/data';
 
 export default function ChatDetailScreen() {
@@ -31,12 +34,62 @@ export default function ChatDetailScreen() {
         isSending,
         deleteConversation,
         retryMessage,
+        lastBotText,
     } = useChat();
     const router = useRouter();
 
     const [inputText, setInputText] = useState('');
     const [showScrollDown, setShowScrollDown] = useState(false);
     const flatListRef = useRef<FlatList>(null);
+
+    const { enabled: ttsEnabled, rate: ttsRate } = useTTSPrefs();
+    const [echoMood, setEchoMood] = useState<ExpressionName>('calm');
+    const [echoSpeaking, setEchoSpeaking] = useState(false);
+
+    // Derive Echo mood from last bot message
+    useEffect(() => {
+        const t = lastBotText.toLowerCase();
+        if (!t) { setEchoMood('happy'); return; }
+        if (/\b(sad|stress|anxious|tired|alone|lost|hurt|cry)\b/.test(t)) {
+            setEchoMood('sad');
+        } else if (/\b(achieved|milestone|proud|did it|congrats|great job)\b/.test(t)) {
+            setEchoMood('excited');
+        } else if (/\b(why|wonder|mean|purpose|reflect|meaning)\b/.test(t)) {
+            setEchoMood('curious');
+        } else {
+            setEchoMood('calm');
+        }
+    }, [lastBotText]);
+
+    // TTS: speak when new bot message arrives
+    const prevLastBotText = useRef('');
+    useEffect(() => {
+        if (!ttsEnabled || !lastBotText || lastBotText === prevLastBotText.current) return;
+        prevLastBotText.current = lastBotText;
+        Speech.stop();
+        setEchoSpeaking(true);
+        Speech.speak(lastBotText, {
+            rate: ttsRate,
+            onDone: () => setEchoSpeaking(false),
+            onError: () => setEchoSpeaking(false),
+        });
+    }, [lastBotText, ttsEnabled, ttsRate]);
+
+    // Stop speech on unmount
+    useEffect(() => {
+        return () => { Speech.stop(); };
+    }, []);
+
+    const handleEchoAvatarTap = () => {
+        if (!ttsEnabled || !lastBotText) return;
+        Speech.stop();
+        setEchoSpeaking(true);
+        Speech.speak(lastBotText, {
+            rate: ttsRate,
+            onDone: () => setEchoSpeaking(false),
+            onError: () => setEchoSpeaking(false),
+        });
+    };
 
     const conversation = conversations.find(c => c.id === id);
 
@@ -190,21 +243,9 @@ export default function ChatDetailScreen() {
                 >
                     {/* Bot avatar — only on last message in group */}
                     {!isUser && (
-                        <View style={{ width: 32, marginRight: 8 }}>
+                        <View style={{ width: 36, marginRight: 6 }}>
                             {lastInGroup && (
-                                <View style={{
-                                    width: 32,
-                                    height: 32,
-                                    borderRadius: 16,
-                                    overflow: 'hidden',
-                                }}>
-                                    <LinearGradient
-                                        colors={['#4F6BFF', '#7B3FE4']}
-                                        style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-                                    >
-                                        <MaterialCommunityIcons name="robot" size={16} color="#fff" />
-                                    </LinearGradient>
-                                </View>
+                                <EchoAvatar expression="calm" size={36} animated={false} />
                             )}
                         </View>
                     )}
@@ -314,26 +355,20 @@ export default function ChatDetailScreen() {
                 </TouchableOpacity>
 
                 {/* Bot info */}
-                <View style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    overflow: 'hidden',
-                    marginLeft: 4,
-                }}>
-                    <LinearGradient
-                        colors={['#4F6BFF', '#7B3FE4']}
-                        style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-                    >
-                        <MaterialCommunityIcons name="robot" size={18} color="#fff" />
-                    </LinearGradient>
-                </View>
+                <TouchableOpacity onPress={handleEchoAvatarTap} style={{ marginLeft: 4 }}>
+                    <EchoAvatar
+                        expression={isSending ? 'thinking' : echoMood}
+                        size={44}
+                        animated={false}
+                        speaking={echoSpeaking}
+                    />
+                </TouchableOpacity>
                 <View style={{ flex: 1, marginLeft: 10 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }} numberOfLines={1}>
                         {conversation.title}
                     </Text>
-                    <Text style={{ fontSize: 12, color: isSending ? '#10B981' : colors.textSecondary }}>
-                        {isSending ? 'Echo is typing...' : 'Echo AI'}
+                    <Text style={{ fontSize: 12, color: isSending ? colors.primary : colors.textSecondary }}>
+                        {isSending ? 'Echo is listening...' : `Echo • ${ttsEnabled ? '🔊' : '☁️'}`}
                     </Text>
                 </View>
 
