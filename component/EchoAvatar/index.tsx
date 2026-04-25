@@ -192,9 +192,7 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
   const svgW = size;
   const svgH = (VIEWBOX_H / VIEWBOX_W) * size;
   const config = EXPRESSIONS[expression];
-  // TODO: colors.echoCloud will be added in Task 3 (ThemeContext update).
-  // Using type assertion here to avoid blocking this component on that task.
-  const cloudColor = (colors as any).echoCloud ?? '#D6EAFF';
+  const cloudColor = colors.echoCloud;
   const textColor = colors.text;
 
   return (
