@@ -12,11 +12,17 @@ export function useTTSPrefs() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.multiGet([TTS_ENABLED_KEY, TTS_RATE_KEY]).then(([[, en], [, rt]]) => {
-      if (en !== null) setEnabledState(en === 'true');
-      if (rt !== null) setRateState(parseFloat(rt) as TTSRate);
-      setLoaded(true);
-    });
+    AsyncStorage.multiGet([TTS_ENABLED_KEY, TTS_RATE_KEY])
+      .then(([[, en], [, rt]]) => {
+        if (en !== null) setEnabledState(en === 'true');
+        if (rt !== null) {
+          const VALID_RATES: TTSRate[] = [0.8, 1.0, 1.3];
+          const parsed = parseFloat(rt);
+          if (VALID_RATES.includes(parsed as TTSRate)) setRateState(parsed as TTSRate);
+        }
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
   }, []);
 
   const setEnabled = async (val: boolean) => {
