@@ -7,14 +7,9 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { ThemeColors } from '../context/ThemeContext';
 import { EchoAvatar } from './EchoAvatar';
 
-interface TypingIndicatorProps {
-  colors: ThemeColors;
-}
-
-export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ colors }) => {
+export const TypingIndicator: React.FC = () => {
   const bounceY = useSharedValue(0);
 
   React.useEffect(() => {

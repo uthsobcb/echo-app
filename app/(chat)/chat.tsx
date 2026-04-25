@@ -363,7 +363,7 @@ export default function ChatDetailScreen() {
                     ListFooterComponent={
                         isSending ? (
                             <View style={{ paddingHorizontal: 12, marginLeft: 40 }}>
-                                <TypingIndicator colors={colors} />
+                                <TypingIndicator />
                             </View>
                         ) : null
                     }
