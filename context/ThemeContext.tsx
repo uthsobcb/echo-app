@@ -10,30 +10,36 @@ export interface ThemeColors {
   text: string;
   textSecondary: string;
   primary: string;
+  accent: string;
   border: string;
   borderSecondary: string;
+  echoCloud: string;
 }
 
 const lightColors: ThemeColors = {
-  background: '#F5F6FA',
-  surface: '#FFFFFF',
-  surfaceSecondary: '#EEF1FF',
-  text: '#1A1D2E',
-  textSecondary: '#7A8499',
-  primary: '#4F6BFF',
-  border: '#E5E8F0',
-  borderSecondary: '#F0F2F8',
+  background:      '#EEF6FF',
+  surface:         '#FFFFFF',
+  surfaceSecondary:'#F0F7FF',
+  text:            '#1A2A4A',
+  textSecondary:   '#6B8CAE',
+  primary:         '#5B9BF8',
+  accent:          '#FFB347',
+  border:          '#C8DFF5',
+  borderSecondary: '#E0EFFF',
+  echoCloud:       '#D6EAFF',
 };
 
 const darkColors: ThemeColors = {
-  background: '#0F1117',
-  surface: '#1A1D2E',
-  surfaceSecondary: '#252936',
-  text: '#FFFFFF',
-  textSecondary: '#B0BAD0',
-  primary: '#4F6BFF',
-  border: '#2D3242',
-  borderSecondary: '#252936',
+  background:      '#0A0E1A',
+  surface:         '#131929',
+  surfaceSecondary:'#1C2540',
+  text:            '#E8F0FF',
+  textSecondary:   '#7A94C0',
+  primary:         '#7EB8FF',
+  accent:          '#C084FC',
+  border:          '#2A3A5C',
+  borderSecondary: '#1C2540',
+  echoCloud:       '#1E2D50',
 };
 
 interface ThemeContextType {
