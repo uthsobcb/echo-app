@@ -18,10 +18,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     return (
         <View className="border-t border-slate-200 bg-white px-4 py-4">
             <View className="flex flex-row items-center gap-2">
+                {/* Disabled STT mic — coming soon */}
+                <TouchableOpacity
+                    disabled
+                    style={{ opacity: 0.35 }}
+                    accessibilityLabel="Voice input coming soon"
+                >
+                    <MaterialCommunityIcons name="microphone-outline" size={24} color="#6B8CAE" />
+                </TouchableOpacity>
+
                 <TextInput
                     value={value}
                     onChangeText={onChangeText}
-                    placeholder="Type your message..."
+                    placeholder="Talk to Echo..."
                     placeholderTextColor="#94a3b8"
                     editable={!isLoading}
                     multiline
