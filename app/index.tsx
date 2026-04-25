@@ -3,18 +3,22 @@ import { Redirect } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 
 export default function Index() {
-  const { isAuthenticated, isLoading } = useStorage();
+  const { isAuthenticated, isLoading, onboardingComplete } = useStorage();
 
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#5B9BF8" />
       </View>
     );
   }
 
   if (!isAuthenticated) {
     return <Redirect href="/(auth)/signin" />;
+  }
+
+  if (!onboardingComplete) {
+    return <Redirect href="/(onboarding)" />;
   }
 
   return <Redirect href="/(tabs)" />;
