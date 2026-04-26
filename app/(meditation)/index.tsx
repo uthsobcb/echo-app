@@ -3,6 +3,7 @@ import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import * as Speech from 'expo-speech';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
@@ -17,7 +18,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { logger } from '@/service/logger';
+import { EchoAvatar, ExpressionName } from '../../component/EchoAvatar';
 import { useTheme } from '../../context/ThemeContext';
+import { useTTSPrefs } from '../../hooks/useTTSPrefs';
 
 const { width } = Dimensions.get('window');
 const CIRCLE_SIZE = width * 0.65;
@@ -38,7 +41,7 @@ const phases = [
 
 export default function MeditationPage() {
     const router = useRouter();
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     
     const scale = useSharedValue(1);
     const opacity = useSharedValue(0.5);
@@ -53,6 +56,10 @@ export default function MeditationPage() {
     const [showDurationPicker, setShowDurationPicker] = useState(true);
     const [showSummary, setShowSummary] = useState(false);
     const [sessionsCompleted, setSessionsCompleted] = useState(0);
+    const [echoExpression, setEchoExpression] = useState<ExpressionName>('calm');
+    const [echoSpeaking, setEchoSpeaking] = useState(false);
+    const [echoScale, setEchoScale] = useState(1.0);
+    const { enabled: ttsEnabled } = useTTSPrefs();
     
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const phaseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,6 +77,7 @@ export default function MeditationPage() {
         if (phaseRef.current) clearTimeout(phaseRef.current);
         cancelAnimation(scale);
         cancelAnimation(opacity);
+        Speech.stop();
         if (sound) {
             await sound.stopAsync();
             await sound.unloadAsync();
@@ -101,7 +109,29 @@ export default function MeditationPage() {
         
         setPhaseIndex(index);
         triggerPhaseHaptic(index);
-        
+
+        const PHASE_CONFIGS: Array<{ expression: ExpressionName; cue: string }> = [
+            { expression: 'calm',   cue: 'Breathe in... slowly.' },
+            { expression: 'calm',   cue: 'Hold... gently.' },
+            { expression: 'sleepy', cue: 'Breathe out... let it go.' },
+            { expression: 'calm',   cue: '' },
+        ];
+        const phaseConfig = PHASE_CONFIGS[index];
+        setEchoExpression(phaseConfig.expression);
+
+        if (index === 0) setEchoScale(1.15);
+        else if (index === 2) setEchoScale(1.0);
+
+        if (ttsEnabled && phaseConfig.cue) {
+            Speech.stop();
+            setEchoSpeaking(true);
+            Speech.speak(phaseConfig.cue, {
+                rate: 0.75,
+                onDone: () => setEchoSpeaking(false),
+                onError: () => setEchoSpeaking(false),
+            });
+        }
+
         const duration = currentPhase.duration;
         
         scale.value = withTiming(currentPhase.scale, {
@@ -169,7 +199,20 @@ export default function MeditationPage() {
         opacity.value = withTiming(1, { duration: 500 });
         
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        
+
+        setEchoExpression('proud');
+        setEchoScale(1.0);
+        Speech.stop();
+        if (ttsEnabled) {
+            setEchoSpeaking(true);
+            Speech.speak("You did it. I'm so proud of you.", {
+                rate: 0.85,
+                onDone: () => setEchoSpeaking(false),
+                onError: () => setEchoSpeaking(false),
+            });
+        }
+        setTimeout(() => setEchoExpression('happy'), 1800);
+
         setSessionsCompleted(prev => prev + 1);
         setIsPlaying(false);
         setShowSummary(true);
@@ -294,7 +337,7 @@ export default function MeditationPage() {
         return (
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <LinearGradient
-                    colors={['#e0f2fe', '#f0f9ff', '#fff']}
+                    colors={isDark ? ['#0A0E1A', '#131929', '#1C2540'] : ['#C9E8FF', '#EEF6FF', '#FFFFFF']}
                     style={styles.background}
                 />
                 <SafeAreaView style={styles.safeArea}>
@@ -375,17 +418,29 @@ export default function MeditationPage() {
 
                 <View style={styles.content}>
                     <View style={styles.circleContainer}>
-                        <View style={[styles.circleBase, styles.circleStatic]} />
-                        
-                        <Animated.View style={[styles.circleBase, styles.circleAnimated, animatedCircleStyle]}>
-                            <LinearGradient
-                                colors={['#60A5FA', '#3B82F6']}
-                                style={styles.circleGradient}
+                        {/* Breathing ring behind Echo */}
+                        <Animated.View
+                            style={[
+                                styles.breathRing,
+                                animatedCircleStyle,
+                                { borderColor: colors.primary },
+                            ]}
+                        />
+
+                        {/* Echo scales with breath */}
+                        <Animated.View style={{ transform: [{ scale: echoScale }], alignItems: 'center' }}>
+                            <EchoAvatar
+                                expression={echoExpression}
+                                size={CIRCLE_SIZE * 0.85}
+                                animated
+                                speaking={echoSpeaking}
                             />
                         </Animated.View>
 
                         <View style={styles.textContainer}>
-                            <Text style={styles.phaseText}>{phases[phaseIndex].text}</Text>
+                            <Text style={[styles.phaseText, { color: colors.text }]}>
+                                {phases[phaseIndex].text}
+                            </Text>
                         </View>
                     </View>
 
@@ -484,6 +539,14 @@ const styles = StyleSheet.create({
     circleGradient: {
         flex: 1,
         borderRadius: CIRCLE_SIZE / 2,
+    },
+    breathRing: {
+        position: 'absolute',
+        width: CIRCLE_SIZE * 0.95,
+        height: CIRCLE_SIZE * 0.95,
+        borderRadius: CIRCLE_SIZE * 0.475,
+        borderWidth: 2,
+        opacity: 0.3,
     },
     textContainer: {
         position: 'absolute',
