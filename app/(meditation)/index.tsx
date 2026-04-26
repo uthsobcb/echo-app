@@ -39,6 +39,13 @@ const phases = [
     { text: 'Hold', scale: 1.0, opacity: 0.4, duration: 4000 },
 ];
 
+const PHASE_CONFIGS: Array<{ expression: ExpressionName; cue: string }> = [
+    { expression: 'calm',   cue: 'Breathe in... slowly.' },
+    { expression: 'calm',   cue: 'Hold... gently.' },
+    { expression: 'sleepy', cue: 'Breathe out... let it go.' },
+    { expression: 'calm',   cue: '' },
+];
+
 export default function MeditationPage() {
     const router = useRouter();
     const { colors, isDark } = useTheme();
@@ -58,7 +65,7 @@ export default function MeditationPage() {
     const [sessionsCompleted, setSessionsCompleted] = useState(0);
     const [echoExpression, setEchoExpression] = useState<ExpressionName>('calm');
     const [echoSpeaking, setEchoSpeaking] = useState(false);
-    const [echoScale, setEchoScale] = useState(1.0);
+    const echoScaleValue = useSharedValue(1.0);
     const { enabled: ttsEnabled } = useTTSPrefs();
     
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -110,17 +117,11 @@ export default function MeditationPage() {
         setPhaseIndex(index);
         triggerPhaseHaptic(index);
 
-        const PHASE_CONFIGS: Array<{ expression: ExpressionName; cue: string }> = [
-            { expression: 'calm',   cue: 'Breathe in... slowly.' },
-            { expression: 'calm',   cue: 'Hold... gently.' },
-            { expression: 'sleepy', cue: 'Breathe out... let it go.' },
-            { expression: 'calm',   cue: '' },
-        ];
         const phaseConfig = PHASE_CONFIGS[index];
         setEchoExpression(phaseConfig.expression);
 
-        if (index === 0) setEchoScale(1.15);
-        else if (index === 2) setEchoScale(1.0);
+        if (index === 0) echoScaleValue.value = withTiming(1.15, { duration: 800, easing: Easing.inOut(Easing.ease) });
+        else if (index === 2) echoScaleValue.value = withTiming(1.0, { duration: 1200, easing: Easing.inOut(Easing.ease) });
 
         if (ttsEnabled && phaseConfig.cue) {
             Speech.stop();
@@ -130,6 +131,8 @@ export default function MeditationPage() {
                 onDone: () => setEchoSpeaking(false),
                 onError: () => setEchoSpeaking(false),
             });
+        } else {
+            setEchoSpeaking(false);
         }
 
         const duration = currentPhase.duration;
@@ -201,7 +204,7 @@ export default function MeditationPage() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         setEchoExpression('proud');
-        setEchoScale(1.0);
+        echoScaleValue.value = withTiming(1.0, { duration: 500 });
         Speech.stop();
         if (ttsEnabled) {
             setEchoSpeaking(true);
@@ -274,6 +277,10 @@ export default function MeditationPage() {
 
     const animatedProgressStyle = useAnimatedStyle(() => ({
         transform: [{ rotate: `${progress.value * 360}deg` }],
+    }));
+
+    const echoScaleStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: echoScaleValue.value }],
     }));
 
     if (showSummary) {
@@ -388,7 +395,7 @@ export default function MeditationPage() {
     return (
         <View style={styles.container}>
             <LinearGradient
-                colors={['#e0f2fe', '#f0f9ff', '#fff']}
+                colors={isDark ? ['#0A0E1A', '#131929', '#1C2540'] : ['#C9E8FF', '#EEF6FF', '#FFFFFF']}
                 style={styles.background}
             />
             <SafeAreaView style={styles.safeArea}>
@@ -428,7 +435,7 @@ export default function MeditationPage() {
                         />
 
                         {/* Echo scales with breath */}
-                        <Animated.View style={{ transform: [{ scale: echoScale }], alignItems: 'center' }}>
+                        <Animated.View style={[echoScaleStyle, { alignItems: 'center' }]}>
                             <EchoAvatar
                                 expression={echoExpression}
                                 size={CIRCLE_SIZE * 0.85}
@@ -518,28 +525,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginBottom: 40,
     },
-    circleBase: {
-        position: 'absolute',
-        width: CIRCLE_SIZE,
-        height: CIRCLE_SIZE,
-        borderRadius: CIRCLE_SIZE / 2,
-    },
-    circleStatic: {
-        borderWidth: 2,
-        borderColor: '#e2e8f0',
-        borderStyle: 'dashed',
-    },
-    circleAnimated: {
-        shadowColor: "#3B82F6",
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.3,
-        shadowRadius: 20,
-        elevation: 8,
-    },
-    circleGradient: {
-        flex: 1,
-        borderRadius: CIRCLE_SIZE / 2,
-    },
     breathRing: {
         position: 'absolute',
         width: CIRCLE_SIZE * 0.95,
@@ -556,7 +541,6 @@ const styles = StyleSheet.create({
     phaseText: {
         fontSize: 32,
         fontWeight: '600',
-        color: '#1e3a8a',
         letterSpacing: 1,
     },
     progressContainer: {
