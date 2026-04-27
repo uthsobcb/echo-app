@@ -36,18 +36,16 @@ const DAILY_SLOTS: Array<{ id: string; hour: number; minute: number }> = [
 
 const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationContent[]> = {
     [NotificationType.JOURNAL_REMINDER]: [
-        { title: "Good morning! ☀️", body: "Start your day with a quick reflection in Echo." },
-        { title: "Echo is waiting! 📖", body: "Echo is waiting for your story. Take a moment to reflect." },
-        { title: "Afternoon check-in 🌤️", body: "How's your day going? Echo would love to hear." },
-        { title: "Streak Alert! 🔥", body: "Only 5 minutes to keep your streak alive! Echo believes in you." },
-        { title: "Echo misses you ✨", body: "Echo misses your thoughts. Let's write them down!" },
-        { title: "Don't leave Echo hanging... 💭", body: "What happened today? Echo is curious!" },
-        { title: "Echo's feeling lonely... 😢", body: "Echo is feeling a bit lonely without your updates. Write a quick note?" },
-        { title: "Are we still friends? 💔", body: "Echo thought we were best friends. Want to share something?" },
-        { title: "Evening reflection 🌙", body: "Wind down your day with a few thoughts in Echo." },
-        { title: "Small moments matter 🌱", body: "Even one sentence counts. Open Echo and write something." },
-        { title: "Your future self will thank you 💫", body: "Journal entries are tiny gifts to your future self. Write one now!" },
-        { title: "10 seconds. That's all. ⏱️", body: "Open Echo, write one thing you felt today. Done." },
+        { title: "☀️ Good Morning!", body: "Start your day with a quick reflection. What's on your mind?" },
+        { title: "📝 Afternoon Check-in", body: "How's your day going? Take a moment to journal your thoughts." },
+        { title: "🌙 Evening Wind-down", body: "Time to reflect on your day. Write a few thoughts before you rest." },
+        { title: "🔥 Streak Alert!", body: "Don't break your streak! A quick entry keeps it alive." },
+        { title: "✨ Echo Misses You", body: "Your thoughts matter. Take 2 minutes to journal today." },
+        { title: "💭 Quick Reflection", body: "What made you smile today? Echo wants to know!" },
+        { title: "🌱 Small Steps", body: "Even one sentence counts. Open Echo and write something." },
+        { title: "⏱️ 10 Seconds Only", body: "Write one thing you felt today. That's it!" },
+        { title: "💫 Future You Will Thank You", body: "Journal entries are gifts to your future self. Write one now!" },
+        { title: "🌟 Daily Moment", body: "Capture today's moment before it fades. Journal now!" },
     ],
     [NotificationType.TODO_REMINDER]: [
         { title: "Echo's Check-in ✅", body: "Hey! Echo noticed some tasks are still waiting for you." },
@@ -108,10 +106,14 @@ export const setupNotifications = async (): Promise<boolean> => {
 
     if (Platform.OS === "android") {
         await Notifications.setNotificationChannelAsync("default", {
-            name: "default",
-            importance: Notifications.AndroidImportance.MAX,
+            name: "Echo Reminders",
+            importance: Notifications.AndroidImportance.HIGH,
             vibrationPattern: [0, 250, 250, 250],
-            lightColor: "#FF231F7C",
+            lightColor: "#4F6BFF",
+            sound: 'default',
+            enableVibrate: true,
+            enableLights: true,
+            showBadge: true,
         });
     }
 
@@ -173,6 +175,18 @@ const cancelById = async (id: string) => {
 };
 
 /**
+ * Cancel all daily reminder notifications
+ */
+export const cancelAllDailyReminders = async () => {
+    if (!Notifications) return;
+    
+    for (const slot of DAILY_SLOTS) {
+        await cancelById(slot.id);
+    }
+    logger.info('[Notifications] All daily reminders canceled');
+};
+
+/**
  * Schedule 3 daily reminders (morning, afternoon, evening).
  * Cancels previous ones first so re-calling never duplicates.
  */
@@ -186,6 +200,7 @@ export const scheduleDailyReminder = async () => {
         const mascotUri = await getMascotAsset();
 
         for (const slot of DAILY_SLOTS) {
+            // Cancel existing notification with this ID first
             await cancelById(slot.id);
 
             const { title, body } = getRandomMessage(NotificationType.JOURNAL_REMINDER);
@@ -196,11 +211,16 @@ export const scheduleDailyReminder = async () => {
                     title,
                     body,
                     sound: true,
-                    attachments: mascotUri ? [{
-                        url: mascotUri,
-                        identifier: 'mascot',
-                        type: 'image/png'
-                    } as any] : [],
+                    priority: Notifications.AndroidNotificationPriority.HIGH,
+                    vibrate: [0, 250, 250, 250],
+                    data: { type: 'JOURNAL_REMINDER', timeSlot: slot.id },
+                    ...(mascotUri && {
+                        attachments: [{
+                            url: mascotUri,
+                            identifier: 'mascot',
+                            type: 'image/png'
+                        } as any],
+                    }),
                 },
                 trigger: {
                     type: 'daily',
@@ -300,10 +320,13 @@ export const scheduleStreakReminder = async (days: number) => {
         const mascotUri = await getMascotAsset();
 
         await Notifications.scheduleNotificationAsync({
+            identifier: NOTIF_ID.STREAK_AT_RISK,
             content: {
                 title: `${title} (${days} days)`,
                 body,
                 sound: true,
+                priority: Notifications.AndroidNotificationPriority.HIGH,
+                data: { type: 'STREAK_RECOVERY', days },
                 attachments: mascotUri ? [{
                     url: mascotUri,
                     identifier: 'mascot-streak',
@@ -314,7 +337,7 @@ export const scheduleStreakReminder = async (days: number) => {
                 type: 'daily',
                 hour: 21,
                 minute: 0,
-                repeats: false,
+                repeats: true,
             } as any,
         });
     } catch (e) {

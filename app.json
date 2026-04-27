@@ -49,7 +49,20 @@
           }
         }
       ],
-      "expo-speech-recognition"
+      [
+        "@revopush/expo-code-push-plugin",
+        {
+          "ios": {
+            "CodePushDeploymentKey": "DYsmRU7y1AUPNYVzveK2ipOD39NjNJWJhD4pQl",
+            "CodePushServerUrl": "https://api.revopush.org"
+          },
+          "android": {
+            "CodePushDeploymentKey": "DYsmRU7y1AUPNYVzveK2ipOD39NjNJWJhD4pQl",
+            "CodePushServerUrl": "https://api.revopush.org"
+          }
+        }
+      ],
+      "expo-speech-recognition",
     ],
     "experiments": {
       "typedRoutes": true,

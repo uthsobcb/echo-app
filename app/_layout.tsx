@@ -1,7 +1,7 @@
 import "../global.css";
 
-import CelebrationOverlay from "@/component/gamification/CelebrationOverlay";
 import ErrorBoundary from "@/component/ErrorBoundary";
+import CelebrationOverlay from "@/component/gamification/CelebrationOverlay";
 import { GamificationProvider } from "@/context/GamificationContext";
 import { StorageProvider } from "@/context/StorageContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -12,13 +12,16 @@ import {
   Caveat_700Bold,
   useFonts,
 } from "@expo-google-fonts/caveat";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+import codePush from "@revopush/react-native-code-push";
+
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     Caveat_400Regular,
     Caveat_600SemiBold,
@@ -33,9 +36,23 @@ export default function RootLayout() {
 
   useEffect(() => {
     const initNotifications = async () => {
-      const isGranted = await setupNotifications();
-      if (isGranted) {
-        await scheduleDailyReminder();
+      try {
+        // Check if reminders are enabled (default to true if not set)
+        const reminderEnabled = await AsyncStorage.getItem('echo_reminder_enabled');
+        const isEnabled = reminderEnabled === null || reminderEnabled === 'true';
+        
+        if (isEnabled) {
+          const isGranted = await setupNotifications();
+          if (isGranted) {
+            await scheduleDailyReminder();
+          }
+        }
+      } catch (error) {
+        // If there's an error, try to setup notifications anyway
+        const isGranted = await setupNotifications();
+        if (isGranted) {
+          await scheduleDailyReminder();
+        }
       }
     };
     initNotifications();
@@ -56,3 +73,7 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+export default codePush({
+  checkFrequency: codePush.CheckFrequency.ON_APP_START,
+})(RootLayout);

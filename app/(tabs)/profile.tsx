@@ -1,11 +1,13 @@
 import ProgressRing from '@/component/gamification/ProgressRing';
 import { useGamification } from '@/context/GamificationContext';
 import { useStorage } from '@/context/StorageContext';
-import { useTheme, ThemeColors } from '@/context/ThemeContext';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { ThemeColors, useTheme } from '@/context/ThemeContext';
+import { cancelAllDailyReminders, scheduleDailyReminder, setupNotifications } from '@/service/NotificationService';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, Modal, ScrollView, StyleSheet, Switch, Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -50,6 +52,8 @@ function BadgeDetailModal({ badge, isEarned, onClose, entriesCount, colors }: { 
     );
 }
 
+const REMINDER_ENABLED_KEY = 'echo_reminder_enabled';
+
 export default function Profile() {
     const { user, logout, stats, appMode } = useStorage();
     const { colors, isDark, setDarkMode } = useTheme();
@@ -61,6 +65,41 @@ export default function Profile() {
 
     const earnedBadges = gam.earnedBadges.length > 0 ? gam.earnedBadges : (user.badge || []);
     const entriesCount = gam.totalEntries || stats.entries || 0;
+
+    // Load reminder preference on mount
+    useEffect(() => {
+        const loadReminderPref = async () => {
+            try {
+                const stored = await AsyncStorage.getItem(REMINDER_ENABLED_KEY);
+                if (stored !== null) {
+                    setReminder(stored === 'true');
+                }
+            } catch (error) {
+                // Use default value (true)
+            }
+        };
+        loadReminderPref();
+    }, []);
+
+    // Handle reminder toggle
+    useEffect(() => {
+        const updateReminders = async () => {
+            // Save preference
+            await AsyncStorage.setItem(REMINDER_ENABLED_KEY, reminder.toString());
+            
+            if (reminder) {
+                // Enable notifications
+                const isGranted = await setupNotifications();
+                if (isGranted) {
+                    await scheduleDailyReminder();
+                }
+            } else {
+                // Disable notifications
+                await cancelAllDailyReminders();
+            }
+        };
+        updateReminders();
+    }, [reminder]);
 
     const switchProps = (value: boolean, onChange: (v: boolean) => void) => ({
         value,
