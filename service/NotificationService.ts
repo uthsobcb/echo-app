@@ -1,4 +1,4 @@
-import { Asset } from 'expo-asset';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from "expo-device";
 import { Platform } from "react-native";
@@ -18,45 +18,39 @@ interface NotificationContent {
     body: string;
 }
 
-// Stable identifiers — cancel before re-schedule to prevent duplicates
 const NOTIF_ID = {
-    DAILY_MORNING: 'daily-reminder-morning',
-    DAILY_AFTERNOON: 'daily-reminder-afternoon',
     DAILY_EVENING: 'daily-reminder-evening',
     TODO_DAILY: 'todo-daily-reminder',
     STREAK_AT_RISK: 'streak-at-risk-nudge',
     BADGE_PROXIMITY: 'badge-proximity-nudge',
+    WIN_CELEBRATE: 'win-celebrate',
 };
 
-const DAILY_SLOTS: Array<{ id: string; hour: number; minute: number }> = [
-    { id: NOTIF_ID.DAILY_MORNING,   hour: 9,  minute: 0  },
-    { id: NOTIF_ID.DAILY_AFTERNOON, hour: 14, minute: 30 },
-    { id: NOTIF_ID.DAILY_EVENING,   hour: 20, minute: 0  },
-];
+// Daily dedup keys — one notification type fires at most once per calendar day
+const DEDUP_KEY = {
+    REMINDER: 'echo_notif_reminder_date',
+    STREAK_NUDGE: 'echo_notif_streak_nudge_date',
+    BADGE_NUDGE: 'echo_notif_badge_nudge_date',
+    WIN: 'echo_notif_win_date',
+};
 
 const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationContent[]> = {
     [NotificationType.JOURNAL_REMINDER]: [
-        { title: "☀️ Good Morning!", body: "Start your day with a quick reflection. What's on your mind?" },
-        { title: "📝 Afternoon Check-in", body: "How's your day going? Take a moment to journal your thoughts." },
-        { title: "🌙 Evening Wind-down", body: "Time to reflect on your day. Write a few thoughts before you rest." },
-        { title: "🔥 Streak Alert!", body: "Don't break your streak! A quick entry keeps it alive." },
-        { title: "✨ Echo Misses You", body: "Your thoughts matter. Take 2 minutes to journal today." },
-        { title: "💭 Quick Reflection", body: "What made you smile today? Echo wants to know!" },
-        { title: "🌱 Small Steps", body: "Even one sentence counts. Open Echo and write something." },
-        { title: "⏱️ 10 Seconds Only", body: "Write one thing you felt today. That's it!" },
-        { title: "💫 Future You Will Thank You", body: "Journal entries are gifts to your future self. Write one now!" },
-        { title: "🌟 Daily Moment", body: "Capture today's moment before it fades. Journal now!" },
+        { title: "✨ Evening Reflection", body: "What made today worth remembering? Take 2 minutes to journal." },
+        { title: "🌙 Wind down with Echo", body: "Before you rest — what's on your mind? A quick reflection goes a long way." },
+        { title: "📝 Your journal is waiting", body: "Even one sentence counts. Open Echo and write something." },
+        { title: "💭 Echo is listening", body: "How did today feel? Write it out — future you will thank you." },
+        { title: "🌟 Daily moment", body: "Capture today before it fades. Just a thought or two is enough." },
+        { title: "🔥 Keep the streak alive", body: "No entry yet today. One quick thought keeps it going!" },
     ],
     [NotificationType.TODO_REMINDER]: [
-        { title: "Echo's Check-in ✅", body: "Hey! Echo noticed some tasks are still waiting for you." },
-        { title: "Let's do this! 🚀", body: "Let's clear that list together with Echo!" },
-        { title: "You got this! 💪", body: "Echo believes in you! Ready to tackle your next task?" },
-        { title: "Task check-in 📋", body: "A few things on your list are calling your name." },
+        { title: "Echo's Check-in ✅", body: "Hey! You've got tasks waiting for you." },
+        { title: "Let's do this! 🚀", body: "A few things on your list are calling your name." },
     ],
     [NotificationType.STREAK_RECOVERY]: [
-        { title: "Don't lose it! 🔥", body: "Your streak is on the line! Echo is cheering for you." },
-        { title: "Keep it going! ✨", body: "You're doing great! Don't let the streak break tonight." },
-        { title: "Streak SOS 🚨", body: "Quick! One entry keeps your streak alive. Echo is rooting for you." },
+        { title: "🔥 Streak check!", body: "No entry yet today — write one quick thought to keep it alive." },
+        { title: "Don't lose it! ✨", body: "Your streak ends at midnight. One sentence is all it takes." },
+        { title: "Streak SOS 🚨", body: "Echo is rooting for you! Quick entry before midnight?" },
     ],
     [NotificationType.CUSTOM]: [],
     [NotificationType.SYSTEM]: [
@@ -64,12 +58,16 @@ const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationContent[]> = {
     ],
 };
 
-const getRandomMessage = (type: NotificationType): NotificationContent => {
-    const messages = NOTIFICATION_REGISTRY[type];
-    return messages[Math.floor(Math.random() * messages.length)];
-};
+const WIN_MESSAGES: NotificationContent[] = [
+    { title: "Great work today! 🎉", body: "You journaled! Echo noticed — keep the momentum going." },
+    { title: "Streak protected! 🔥", body: "Another entry in the books. You're on a roll." },
+    { title: "You showed up ✨", body: "That entry is now a part of your story. See you tomorrow!" },
+    { title: "Echo is proud of you 💙", body: "You took time to reflect today. That matters." },
+];
 
-// Safely import expo-notifications; it's removed from Expo Go in SDK 53+
+const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const todayStr = () => new Date().toDateString();
+
 let Notifications: typeof import('expo-notifications') | null = null;
 try {
     Notifications = require('expo-notifications');
@@ -91,10 +89,6 @@ if (Notifications) {
     Notifications.addNotificationResponseReceivedListener(response => {
         const data = response.notification.request.content.data;
         logger.info('[Notifications] Response received:', data);
-    });
-
-    Notifications.addNotificationReceivedListener(notification => {
-        logger.info('[Notifications] Foreground notification:', notification.request.content.title);
     });
 }
 
@@ -144,8 +138,6 @@ export const setupNotifications = async (): Promise<boolean> => {
             const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
             logger.info("[Notifications] Push token fetched:", tokenData.data);
             await api.users.savePushToken(tokenData.data);
-        } else {
-            logger.info("[Notifications] No EAS projectId found.");
         }
     } catch (e) {
         logger.info("[Notifications] Could not save push token:", e);
@@ -154,94 +146,111 @@ export const setupNotifications = async (): Promise<boolean> => {
     return true;
 };
 
-const getMascotAsset = async () => {
-    try {
-        const asset = Asset.fromModule(require('../assets/images/mascot.png'));
-        await asset.downloadAsync();
-        return asset.localUri || asset.uri;
-    } catch (e) {
-        logger.info("[Notifications] Could not load mascot asset:", e);
-        return null;
-    }
-};
-
 const cancelById = async (id: string) => {
     if (!Notifications) return;
     try {
         await Notifications.cancelScheduledNotificationAsync(id);
-    } catch {
-        // Notification may not exist — fine
-    }
+    } catch { /* Notification may not exist */ }
 };
 
+const alreadySentToday = async (key: string): Promise<boolean> => {
+    const last = await AsyncStorage.getItem(key);
+    return last === todayStr();
+};
+
+const markSentToday = (key: string) => AsyncStorage.setItem(key, todayStr());
+
 /**
- * Cancel all daily reminder notifications
+ * Schedule ONE daily journal reminder at 8pm.
+ * Safe to call repeatedly — schedules at most once per calendar day.
+ * Pass journaledToday=true after the user submits an entry to cancel the reminder.
  */
-export const cancelAllDailyReminders = async () => {
+export const scheduleDailyReminder = async (journaledToday = false) => {
     if (!Notifications) return;
-    
-    for (const slot of DAILY_SLOTS) {
-        await cancelById(slot.id);
-    }
-    logger.info('[Notifications] All daily reminders canceled');
-};
 
-/**
- * Schedule 3 daily reminders (morning, afternoon, evening).
- * Cancels previous ones first so re-calling never duplicates.
- */
-export const scheduleDailyReminder = async () => {
-    if (!Notifications) {
-        logger.info('[Notifications] Skipping schedule – not supported in current environment.');
+    if (journaledToday) {
+        await cancelById(NOTIF_ID.DAILY_EVENING);
+        logger.info('[Notifications] User journaled today — evening reminder cancelled');
+        return;
+    }
+
+    // Dedup: only schedule once per calendar day
+    if (await alreadySentToday(DEDUP_KEY.REMINDER)) {
+        logger.info('[Notifications] Evening reminder already scheduled today, skipping');
         return;
     }
 
     try {
-        const mascotUri = await getMascotAsset();
+        await cancelById(NOTIF_ID.DAILY_EVENING);
+        const { title, body } = pick(NOTIFICATION_REGISTRY[NotificationType.JOURNAL_REMINDER]);
 
-        for (const slot of DAILY_SLOTS) {
-            // Cancel existing notification with this ID first
-            await cancelById(slot.id);
+        await Notifications.scheduleNotificationAsync({
+            identifier: NOTIF_ID.DAILY_EVENING,
+            content: {
+                title,
+                body,
+                sound: true,
+                data: { type: 'JOURNAL_REMINDER' },
+            },
+            trigger: {
+                type: 'daily',
+                channelId: 'default',
+                hour: 20,
+                minute: 0,
+                repeats: true,
+            } as any,
+        });
 
-            const { title, body } = getRandomMessage(NotificationType.JOURNAL_REMINDER);
-
-            await Notifications.scheduleNotificationAsync({
-                identifier: slot.id,
-                content: {
-                    title,
-                    body,
-                    sound: true,
-                    priority: Notifications.AndroidNotificationPriority.HIGH,
-                    vibrate: [0, 250, 250, 250],
-                    data: { type: 'JOURNAL_REMINDER', timeSlot: slot.id },
-                    ...(mascotUri && {
-                        attachments: [{
-                            url: mascotUri,
-                            identifier: 'mascot',
-                            type: 'image/png'
-                        } as any],
-                    }),
-                },
-                trigger: {
-                    type: 'daily',
-                    channelId: "default",
-                    hour: slot.hour,
-                    minute: slot.minute,
-                    repeats: true,
-                } as any,
-            });
-
-            logger.info(`[Notifications] Daily reminder scheduled at ${slot.hour}:${String(slot.minute).padStart(2, '0')}: "${title}"`);
-        }
+        await markSentToday(DEDUP_KEY.REMINDER);
+        logger.info('[Notifications] Evening journal reminder scheduled (8pm daily)');
     } catch (e) {
-        logger.info("[Notifications] Could not schedule reminders:", e);
+        logger.info('[Notifications] Could not schedule daily reminder:', e);
+    }
+};
+
+export const cancelAllDailyReminders = async () => {
+    if (!Notifications) return;
+    await cancelById(NOTIF_ID.DAILY_EVENING);
+    await AsyncStorage.removeItem(DEDUP_KEY.REMINDER);
+    logger.info('[Notifications] Daily reminder cancelled');
+};
+
+/**
+ * Fire a single win-celebration notification ~3 seconds after journaling.
+ * Throttled to once per day — safe to call after every journal submit.
+ */
+export const notifyJournalComplete = async () => {
+    if (!Notifications) return;
+    if (await alreadySentToday(DEDUP_KEY.WIN)) return;
+
+    try {
+        const msg = pick(WIN_MESSAGES);
+        await Notifications.scheduleNotificationAsync({
+            identifier: NOTIF_ID.WIN_CELEBRATE,
+            content: {
+                title: msg.title,
+                body: msg.body,
+                sound: true,
+                data: { type: 'WIN' },
+            },
+            trigger: {
+                type: 'timeInterval',
+                seconds: 3,
+                repeats: false,
+            } as any,
+        });
+        await markSentToday(DEDUP_KEY.WIN);
+        // User journaled — cancel the day's reminder
+        await cancelById(NOTIF_ID.DAILY_EVENING);
+        logger.info('[Notifications] Win celebration notification scheduled');
+    } catch (e) {
+        logger.info('[Notifications] Could not schedule win notification:', e);
     }
 };
 
 /**
  * Schedule a single daily todo reminder at 10:00 AM.
- * Cancels previous first — no duplicates regardless of how often called.
- * Call after fetching todos whenever there are pending items.
+ * Cancel it when pending count reaches zero.
  */
 export const scheduleTodoDailyReminder = async (pendingCount: number, sampleTask?: string) => {
     if (!Notifications) return;
@@ -253,146 +262,94 @@ export const scheduleTodoDailyReminder = async (pendingCount: number, sampleTask
     try {
         await cancelById(NOTIF_ID.TODO_DAILY);
 
-        const { title } = getRandomMessage(NotificationType.TODO_REMINDER);
+        const { title } = pick(NOTIFICATION_REGISTRY[NotificationType.TODO_REMINDER]);
         const body = sampleTask
             ? `"${sampleTask}"${pendingCount > 1 ? ` + ${pendingCount - 1} more` : ''} waiting for you.`
             : `You have ${pendingCount} pending ${pendingCount === 1 ? 'task' : 'tasks'} today.`;
 
-        const mascotUri = await getMascotAsset();
-
         await Notifications.scheduleNotificationAsync({
             identifier: NOTIF_ID.TODO_DAILY,
-            content: {
-                title,
-                body,
-                sound: true,
-                data: { screen: 'todo', type: 'TODO_REMINDER' },
-                attachments: mascotUri ? [{
-                    url: mascotUri,
-                    identifier: 'mascot-todo',
-                    type: 'image/png'
-                } as any] : [],
-            },
-            trigger: {
-                type: 'daily',
-                channelId: 'default',
-                hour: 10,
-                minute: 0,
-                repeats: true,
-            } as any,
+            content: { title, body, sound: true, data: { screen: 'todo', type: 'TODO_REMINDER' } },
+            trigger: { type: 'daily', channelId: 'default', hour: 10, minute: 0, repeats: true } as any,
         });
 
         logger.info(`[Notifications] Todo daily reminder scheduled: ${pendingCount} pending tasks`);
     } catch (e) {
-        logger.info("[Notifications] Could not schedule todo reminder:", e);
+        logger.info('[Notifications] Could not schedule todo reminder:', e);
     }
 };
 
+/**
+ * Throttled custom notification — fires once per day, with a 3s delay.
+ * Replaces the old immediate-fire version that caused notification storms.
+ */
 export const scheduleCustomNotification = async (title: string, body: string, data: Record<string, unknown> = {}) => {
     if (!Notifications) return;
+    if (await alreadySentToday(DEDUP_KEY.WIN)) return; // Share win dedup slot
 
     try {
-        const mascotUri = await getMascotAsset();
         await Notifications.scheduleNotificationAsync({
-            content: {
-                title,
-                body,
-                data,
-                sound: true,
-                attachments: mascotUri ? [{
-                    url: mascotUri,
-                    identifier: 'mascot-custom',
-                    type: 'image/png'
-                } as any] : [],
-            },
-            trigger: null,
+            content: { title, body, data, sound: true },
+            trigger: { type: 'timeInterval', seconds: 3, repeats: false } as any,
         });
+        await markSentToday(DEDUP_KEY.WIN);
     } catch (e) {
-        logger.info("[Notifications] Could not schedule custom notification:", e);
-    }
-};
-
-export const scheduleStreakReminder = async (days: number) => {
-    if (!Notifications) return;
-
-    try {
-        const { title, body } = getRandomMessage(NotificationType.STREAK_RECOVERY);
-        const mascotUri = await getMascotAsset();
-
-        await Notifications.scheduleNotificationAsync({
-            identifier: NOTIF_ID.STREAK_AT_RISK,
-            content: {
-                title: `${title} (${days} days)`,
-                body,
-                sound: true,
-                priority: Notifications.AndroidNotificationPriority.HIGH,
-                data: { type: 'STREAK_RECOVERY', days },
-                attachments: mascotUri ? [{
-                    url: mascotUri,
-                    identifier: 'mascot-streak',
-                    type: 'image/png'
-                } as any] : [],
-            },
-            trigger: {
-                type: 'daily',
-                hour: 21,
-                minute: 0,
-                repeats: true,
-            } as any,
-        });
-    } catch (e) {
-        logger.info("[Notifications] Could not schedule streak reminder:", e);
+        logger.info('[Notifications] Could not schedule custom notification:', e);
     }
 };
 
 /**
  * Schedule a streak-at-risk nudge (fires in 2 hours).
- * Cancels any pending nudge first — only ever 1 queued.
+ * Throttled to once per day — safe to call on every gamification update.
  */
 export const scheduleStreakAtRiskNudge = async (streakDays: number) => {
     if (!Notifications) return;
+    if (await alreadySentToday(DEDUP_KEY.STREAK_NUDGE)) {
+        logger.info('[Notifications] Streak nudge already sent today, skipping');
+        return;
+    }
 
     try {
         await cancelById(NOTIF_ID.STREAK_AT_RISK);
+        const { title, body } = pick(NOTIFICATION_REGISTRY[NotificationType.STREAK_RECOVERY]);
 
-        const mascotUri = await getMascotAsset();
         await Notifications.scheduleNotificationAsync({
             identifier: NOTIF_ID.STREAK_AT_RISK,
             content: {
-                title: `Your ${streakDays}-day streak is about to end!`,
-                body: "Write a quick entry to keep it alive. Echo believes in you!",
+                title: `${title} (${streakDays} days)`,
+                body,
                 sound: true,
-                data: { screen: 'create', type: 'STREAK_RECOVERY' },
-                attachments: mascotUri ? [{
-                    url: mascotUri,
-                    identifier: 'mascot-risk',
-                    type: 'image/png'
-                } as any] : [],
+                data: { screen: 'create', type: 'STREAK_RECOVERY', days: streakDays },
             },
-            trigger: {
-                type: 'timeInterval',
-                seconds: 7200,
-                repeats: false,
-            } as any,
+            trigger: { type: 'timeInterval', seconds: 7200, repeats: false } as any,
         });
+        await markSentToday(DEDUP_KEY.STREAK_NUDGE);
         logger.info(`[Notifications] Streak-at-risk nudge scheduled for ${streakDays}-day streak`);
     } catch (e) {
-        logger.info("[Notifications] Could not schedule streak-at-risk nudge:", e);
+        logger.info('[Notifications] Could not schedule streak-at-risk nudge:', e);
     }
 };
 
 /**
- * Schedule a badge proximity nudge.
- * Cancels any pending nudge first — only ever 1 queued.
+ * @deprecated Use scheduleStreakAtRiskNudge instead.
+ * Kept for backwards compatibility with existing callers.
+ */
+export const scheduleStreakReminder = async (days: number) => {
+    await scheduleStreakAtRiskNudge(days);
+};
+
+/**
+ * Schedule a badge proximity nudge (fires in 1 hour).
+ * Only triggers if 1–3 entries remain, and at most once per day.
  */
 export const scheduleBadgeProximityNudge = async (badgeName: string, entriesRemaining: number) => {
     if (!Notifications) return;
     if (entriesRemaining > 3 || entriesRemaining <= 0) return;
+    if (await alreadySentToday(DEDUP_KEY.BADGE_NUDGE)) return;
 
     try {
         await cancelById(NOTIF_ID.BADGE_PROXIMITY);
 
-        const mascotUri = await getMascotAsset();
         await Notifications.scheduleNotificationAsync({
             identifier: NOTIF_ID.BADGE_PROXIMITY,
             content: {
@@ -400,20 +357,12 @@ export const scheduleBadgeProximityNudge = async (badgeName: string, entriesRema
                 body: `Just ${entriesRemaining} more ${entriesRemaining === 1 ? 'entry' : 'entries'} until you earn "${badgeName}"!`,
                 sound: true,
                 data: { screen: 'create', type: 'CUSTOM' },
-                attachments: mascotUri ? [{
-                    url: mascotUri,
-                    identifier: 'mascot-badge',
-                    type: 'image/png'
-                } as any] : [],
             },
-            trigger: {
-                type: 'timeInterval',
-                seconds: 3600,
-                repeats: false,
-            } as any,
+            trigger: { type: 'timeInterval', seconds: 3600, repeats: false } as any,
         });
+        await markSentToday(DEDUP_KEY.BADGE_NUDGE);
         logger.info(`[Notifications] Badge proximity nudge scheduled: ${entriesRemaining} until "${badgeName}"`);
     } catch (e) {
-        logger.info("[Notifications] Could not schedule badge proximity nudge:", e);
+        logger.info('[Notifications] Could not schedule badge proximity nudge:', e);
     }
 };

@@ -1,7 +1,6 @@
 // component/EchoAvatar/index.tsx
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet } from 'react-native';
-import Svg, { Circle, Ellipse, Path, G } from 'react-native-svg';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -10,8 +9,8 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { useTheme } from '../../context/ThemeContext';
-import { EXPRESSIONS, MOUTH_PATHS, ExpressionName } from './expressions';
+import Svg, { Circle, Ellipse, G, Path } from 'react-native-svg';
+import { ExpressionName, EXPRESSIONS, MOUTH_PATHS } from './expressions';
 
 export type { ExpressionName };
 
@@ -27,22 +26,61 @@ const VIEWBOX_H = 160;
 
 const SPARKLE_STAR = 'M 0 -4 L 1 -1 L 4 0 L 1 1 L 0 4 L -1 1 L -4 0 L -1 -1 Z';
 const SPARKLE_POSITIONS = [
-  { x: 32, y: 52 },
-  { x: 168, y: 48 },
-  { x: 24, y: 92 },
-  { x: 176, y: 86 },
-  { x: 100, y: 22 },
+  { x: 26, y: 56 },
+  { x: 172, y: 50 },
+  { x: 18, y: 98 },
+  { x: 176, y: 88 },
+  { x: 96, y: 16 },
 ];
 
-function CloudShape({ color }: { color: string }) {
+const CLOUD_BODY_PATH = [
+  'M 40 126',
+  // bottom left bump
+  'C 36 138 46 146 62 140',
+  // between left and center bottom bumps
+  'C 72 135 80 132 88 138',
+  // center bottom bump (lowest)
+  'C 95 147 108 148 116 138',
+  // between center and right bottom bumps
+  'C 124 132 132 136 140 140',
+  // right bottom bump
+  'C 148 146 162 140 165 128',
+  // right lower side
+  'C 172 116 178 102 178 88',
+  // right side going up
+  'C 180 74 174 56 164 46',
+  // top-right bump
+  'C 158 32 148 24 140 24',
+  // into 3rd top bump
+  'C 134 14 120 8 112 18',
+  // center top bump (tallest)
+  'C 106 6 94 6 86 16',
+  // center-left top bump
+  'C 80 6 68 10 62 20',
+  // far-left top bump
+  'C 56 12 46 18 42 30',
+  // left upper side
+  'C 34 42 20 58 16 74',
+  // left side going down
+  'C 14 88 18 108 26 118',
+  // close bottom left
+  'C 28 124 34 126 40 126',
+  'Z',
+].join(' ');
+
+function CloudShape({ color, strokeColor }: { color: string; strokeColor: string }) {
   return (
     <G>
-      <Circle cx="100" cy="108" r="52" fill={color} />
-      <Circle cx="65"  cy="82"  r="30" fill={color} />
-      <Circle cx="103" cy="66"  r="36" fill={color} />
-      <Circle cx="142" cy="80"  r="26" fill={color} />
-      <Circle cx="44"  cy="108" r="21" fill={color} />
-      <Circle cx="158" cy="106" r="20" fill={color} />
+      {/* Drop shadow */}
+      <Path d={CLOUD_BODY_PATH} fill={strokeColor} transform="translate(8, 8)" />
+      {/* Main cloud body */}
+      <Path
+        d={CLOUD_BODY_PATH}
+        fill={color}
+        stroke={strokeColor}
+        strokeWidth={9}
+        strokeLinejoin="round"
+      />
     </G>
   );
 }
@@ -64,59 +102,57 @@ function Sparkles({ opacity }: { opacity: number }) {
 
 function Face({ config, textColor }: { config: typeof EXPRESSIONS[ExpressionName]; textColor: string }) {
   const {
-    eyeScaleY, pupilOffsetX, pupilOffsetY,
+    eyeScaleY,
     browOffsetY, browRotateLeft, browRotateRight,
     mouthType, blushOpacity,
   } = config;
 
-  const ry = 8 * eyeScaleY;
-  const leftEyeX = 80, rightEyeX = 120, eyeBaseY = 100;
-  const browBaseY = 88;
+  const ry = 20 * eyeScaleY;
+  const leftEyeX = 72, rightEyeX = 130, eyeBaseY = 83;
+  const browBaseY = 56;
 
   return (
     <G>
       {/* Blush */}
-      <Ellipse cx="60"  cy="108" rx="12" ry="7" fill="#FFB6C1" opacity={blushOpacity} />
-      <Ellipse cx="140" cy="108" rx="12" ry="7" fill="#FFB6C1" opacity={blushOpacity} />
+      <Ellipse cx="48"  cy="110" rx="12" ry="7" fill="#FFB6C1" opacity={blushOpacity} />
+      <Ellipse cx="154" cy="110" rx="12" ry="7" fill="#FFB6C1" opacity={blushOpacity} />
 
-      {/* Eyes */}
-      <Ellipse cx={leftEyeX}  cy={eyeBaseY} rx="8" ry={Math.max(ry, 1)} fill={textColor} />
-      <Ellipse cx={rightEyeX} cy={eyeBaseY} rx="8" ry={Math.max(ry, 1)} fill={textColor} />
+      {/* Eyes — large solid ovals like the logo */}
+      <Ellipse cx={leftEyeX}  cy={eyeBaseY} rx="14" ry={Math.max(ry, 1)} fill={textColor} />
+      <Ellipse cx={rightEyeX} cy={eyeBaseY} rx="14" ry={Math.max(ry, 1)} fill={textColor} />
 
-      {/* Pupils */}
-      <Circle cx={leftEyeX  + pupilOffsetX} cy={eyeBaseY + pupilOffsetY} r="4" fill={textColor} />
-      <Circle cx={rightEyeX + pupilOffsetX} cy={eyeBaseY + pupilOffsetY} r="4" fill={textColor} />
+      {/* Subtle eye highlights */}
+      <Circle cx={leftEyeX  - 5} cy={eyeBaseY - 7} r="2.5" fill="white" opacity={0.65} />
+      <Circle cx={rightEyeX - 5} cy={eyeBaseY - 7} r="2.5" fill="white" opacity={0.65} />
 
-      {/* Eye highlights */}
-      <Circle cx={leftEyeX  + pupilOffsetX - 2} cy={eyeBaseY + pupilOffsetY - 2} r="2" fill="white" />
-      <Circle cx={rightEyeX + pupilOffsetX - 2} cy={eyeBaseY + pupilOffsetY - 2} r="2" fill="white" />
-
-      {/* Eyebrows */}
+      {/* Eyebrows (hidden for smile expressions, matching logo) */}
       <Path
-        d={`M 66 ${browBaseY + browOffsetY} Q 80 ${browBaseY - 4 + browOffsetY} 94 ${browBaseY + browOffsetY}`}
+        d={`M ${leftEyeX - 14} ${browBaseY + browOffsetY} Q ${leftEyeX} ${browBaseY - 8 + browOffsetY} ${leftEyeX + 14} ${browBaseY + browOffsetY}`}
         stroke={textColor}
-        strokeWidth="3"
+        strokeWidth="3.5"
         strokeLinecap="round"
         fill="none"
-        transform={`rotate(${browRotateLeft}, 80, ${browBaseY + browOffsetY})`}
+        opacity={mouthType === 'smile' || mouthType === 'bigSmile' ? 0 : 0.5}
+        transform={`rotate(${browRotateLeft}, ${leftEyeX}, ${browBaseY + browOffsetY})`}
       />
       <Path
-        d={`M 106 ${browBaseY + browOffsetY} Q 120 ${browBaseY - 4 + browOffsetY} 134 ${browBaseY + browOffsetY}`}
+        d={`M ${rightEyeX - 14} ${browBaseY + browOffsetY} Q ${rightEyeX} ${browBaseY - 8 + browOffsetY} ${rightEyeX + 14} ${browBaseY + browOffsetY}`}
         stroke={textColor}
-        strokeWidth="3"
+        strokeWidth="3.5"
         strokeLinecap="round"
         fill="none"
-        transform={`rotate(${browRotateRight}, 120, ${browBaseY + browOffsetY})`}
+        opacity={mouthType === 'smile' || mouthType === 'bigSmile' ? 0 : 0.5}
+        transform={`rotate(${browRotateRight}, ${rightEyeX}, ${browBaseY + browOffsetY})`}
       />
 
       {/* Mouth */}
       <Path
         d={MOUTH_PATHS[mouthType]}
         stroke={mouthType === 'open' ? 'none' : textColor}
-        strokeWidth="3"
+        strokeWidth="7"
         strokeLinecap="round"
+        strokeLinejoin="round"
         fill={mouthType === 'open' ? textColor : 'none'}
-        opacity={0.85}
       />
     </G>
   );
@@ -128,7 +164,6 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
   animated = true,
   speaking = false,
 }) => {
-  const { colors } = useTheme();
   const floatY = useSharedValue(0);
   const faceOpacity = useSharedValue(1);
   const speakOpacity = useSharedValue(0);
@@ -140,7 +175,7 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
       floatY.value = withRepeat(
         withSequence(
           withTiming(-4, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-          withTiming(4,  { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+          withTiming(4, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
         ),
         -1,
         true,
@@ -148,7 +183,7 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
     } else {
       floatY.value = withTiming(0, { duration: 200 });
     }
-  }, [animated]);
+  }, [animated, floatY]);
 
   // Expression crossfade
   useEffect(() => {
@@ -159,7 +194,7 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
       );
       prevExpression.current = expression;
     }
-  }, [expression]);
+  }, [expression, faceOpacity]);
 
   // Speaking mouth pulse
   useEffect(() => {
@@ -175,7 +210,7 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
     } else {
       speakOpacity.value = withTiming(0, { duration: 100 });
     }
-  }, [speaking]);
+  }, [speaking, speakOpacity]);
 
   const floatStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: floatY.value }],
@@ -192,8 +227,8 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
   const svgW = size;
   const svgH = (VIEWBOX_H / VIEWBOX_W) * size;
   const config = EXPRESSIONS[expression];
-  const cloudColor = colors.echoCloud;
-  const textColor = colors.text;
+  const cloudColor = '#FFFFFF';
+  const textColor = '#050505';
 
   return (
     <Animated.View style={[{ width: svgW, height: svgH }, floatStyle]}>
@@ -204,7 +239,7 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
         viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
         style={StyleSheet.absoluteFill}
       >
-        <CloudShape color={cloudColor} />
+        <CloudShape color={cloudColor} strokeColor={textColor} />
         <Sparkles opacity={config.sparkleOpacity} />
       </Svg>
 

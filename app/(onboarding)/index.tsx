@@ -27,10 +27,10 @@ import { useTheme } from '../../context/ThemeContext';
 const { width } = Dimensions.get('window');
 
 const GOALS = [
-  'I need someone to talk to',
-  'I want to build better habits',
-  'I want to meditate more',
-  "I'm just exploring",
+  { text: 'I need someone to talk to',     emoji: '💬' },
+  { text: 'I want to build better habits', emoji: '✨' },
+  { text: 'I want to meditate more',       emoji: '🧘' },
+  { text: "I'm just exploring",            emoji: '🗺️' },
 ];
 
 const STEP_EXPRESSIONS: ExpressionName[] = [
@@ -57,10 +57,11 @@ export default function OnboardingScreen() {
   const [echoSpeaking, setEchoSpeaking] = useState(false);
 
   const contentOpacity = useSharedValue(1);
+  const contentSlideX = useSharedValue(0);
 
   const particles = useRef(
-    Array.from({ length: 6 }, () => ({
-      x: Math.random() * (width - 40) + 20,
+    Array.from({ length: 8 }, () => ({
+      x: Math.random() * (width - 60) + 30,
       anim: new RNAnimated.Value(0),
     }))
   ).current;
@@ -79,8 +80,8 @@ export default function OnboardingScreen() {
   ];
 
   const gradientColors = isDark
-    ? (['#0A0E1A', '#131929', '#1C2540'] as const)
-    : (['#C9E8FF', '#EEF6FF', '#FFFFFF'] as const);
+    ? (['#060A14', '#0D1526', '#182038'] as const)
+    : (['#B8DEFF', '#E8F4FF', '#FFFFFF'] as const);
 
   // Typewriter effect
   useEffect(() => {
@@ -95,7 +96,7 @@ export default function OnboardingScreen() {
         clearInterval(interval);
         setEchoSpeaking(false);
       }
-    }, 45);
+    }, 38);
     return () => clearInterval(interval);
   }, [step]);
 
@@ -103,22 +104,22 @@ export default function OnboardingScreen() {
   useEffect(() => {
     if (step === 0) {
       setEchoExpression('sleepy');
-      const t = setTimeout(() => setEchoExpression('happy'), 1200);
+      const t = setTimeout(() => setEchoExpression('happy'), 1000);
       return () => clearTimeout(t);
     }
     setEchoExpression(STEP_EXPRESSIONS[step] ?? 'calm');
   }, [step]);
 
-  // Step 4 particles
+  // Step 3 particles
   useEffect(() => {
     if (step === 3) {
       particles.forEach((p, i) => {
         p.anim.setValue(0);
         RNAnimated.sequence([
-          RNAnimated.delay(i * 120),
+          RNAnimated.delay(i * 100),
           RNAnimated.timing(p.anim, {
             toValue: 1,
-            duration: 1400,
+            duration: 1600,
             useNativeDriver: true,
           }),
         ]).start();
@@ -128,14 +129,20 @@ export default function OnboardingScreen() {
 
   const slideStyle = useAnimatedStyle(() => ({
     opacity: contentOpacity.value,
+    transform: [{ translateX: contentSlideX.value }],
   }));
 
   const advanceStep = () => {
+    // Slide out left, then slide in from right
     contentOpacity.value = withSequence(
-      withTiming(0, { duration: 150, easing: Easing.out(Easing.ease) }),
-      withTiming(1, { duration: 200, easing: Easing.in(Easing.ease) }),
+      withTiming(0, { duration: 120, easing: Easing.out(Easing.ease) }),
+      withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) }),
     );
-    setTimeout(() => setStep((s) => Math.min(s + 1, 4)), 150);
+    contentSlideX.value = withSequence(
+      withTiming(-20, { duration: 120, easing: Easing.out(Easing.ease) }),
+      withTiming(0, { duration: 200, easing: Easing.out(Easing.ease) }),
+    );
+    setTimeout(() => setStep((s) => Math.min(s + 1, 4)), 120);
   };
 
   const toggleGoal = (goal: string) => {
@@ -155,9 +162,19 @@ export default function OnboardingScreen() {
     return true;
   };
 
+  const avatarSize = step === 0 ? 200 : step === 4 ? 180 : 140;
+
   return (
     <View style={styles.root}>
       <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
+
+      {/* Ambient glow behind avatar */}
+      <View
+        style={[
+          styles.avatarGlow,
+          { backgroundColor: colors.primary, opacity: isDark ? 0.12 : 0.08 },
+        ]}
+      />
 
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView
@@ -171,23 +188,25 @@ export default function OnboardingScreen() {
                 key={i}
                 style={[
                   styles.dot,
-                  { backgroundColor: i === step ? colors.primary : colors.border },
+                  i === step
+                    ? [styles.dotActive, { backgroundColor: colors.primary }]
+                    : { backgroundColor: colors.border },
                 ]}
               />
             ))}
           </View>
 
           {/* Echo avatar */}
-          <View style={styles.avatarContainer}>
+          <View style={[styles.avatarContainer, { minHeight: step === 0 ? 240 : 190 }]}>
             <EchoAvatar
               expression={echoExpression}
-              size={step === 4 ? 180 : 140}
+              size={avatarSize}
               animated
               speaking={echoSpeaking}
             />
           </View>
 
-          {/* Step 4 particles */}
+          {/* Step 3 particles */}
           {step === 3 &&
             particles.map((p, i) => (
               <RNAnimated.View
@@ -196,14 +215,11 @@ export default function OnboardingScreen() {
                   styles.particle,
                   {
                     left: p.x,
-                    opacity: p.anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0.8, 0] }),
+                    backgroundColor: i % 2 === 0 ? colors.primary : '#FCD34D',
+                    opacity: p.anim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 0.9, 0] }),
                     transform: [
-                      {
-                        translateY: p.anim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, -120],
-                        }),
-                      },
+                      { translateY: p.anim.interpolate({ inputRange: [0, 1], outputRange: [0, -160] }) },
+                      { scale: p.anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.4, 1, 0.4] }) },
                     ],
                   },
                 ]}
@@ -212,7 +228,9 @@ export default function OnboardingScreen() {
 
           {/* Content area */}
           <Animated.View style={[styles.content, slideStyle]}>
-            <Text style={[styles.mainText, { color: colors.text }]}>{displayedText}</Text>
+            <Text style={[styles.mainText, { color: colors.text, fontFamily: 'Caveat_700Bold' }]}>
+              {displayedText}
+            </Text>
 
             {step === 1 && (
               <TextInput
@@ -220,7 +238,10 @@ export default function OnboardingScreen() {
                 onChangeText={setName}
                 placeholder="Your name..."
                 placeholderTextColor={colors.textSecondary}
-                style={[styles.nameInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.surface }]}
+                style={[
+                  styles.nameInput,
+                  { color: colors.text, borderColor: colors.primary, backgroundColor: colors.surface },
+                ]}
                 autoFocus
                 returnKeyType="next"
                 onSubmitEditing={() => name.trim() && advanceStep()}
@@ -230,11 +251,12 @@ export default function OnboardingScreen() {
             {step === 2 && (
               <View style={styles.chipsContainer}>
                 {GOALS.map((goal) => {
-                  const selected = selectedGoals.includes(goal);
+                  const selected = selectedGoals.includes(goal.text);
                   return (
                     <TouchableOpacity
-                      key={goal}
-                      onPress={() => toggleGoal(goal)}
+                      key={goal.text}
+                      onPress={() => toggleGoal(goal.text)}
+                      activeOpacity={0.75}
                       style={[
                         styles.chip,
                         {
@@ -243,8 +265,9 @@ export default function OnboardingScreen() {
                         },
                       ]}
                     >
+                      <Text style={styles.chipEmoji}>{goal.emoji}</Text>
                       <Text style={[styles.chipText, { color: selected ? '#fff' : colors.text }]}>
-                        {goal}
+                        {goal.text}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -259,21 +282,23 @@ export default function OnboardingScreen() {
               <TouchableOpacity
                 onPress={advanceStep}
                 disabled={!canAdvance()}
+                activeOpacity={0.85}
                 style={[
                   styles.ctaButton,
                   { backgroundColor: canAdvance() ? colors.primary : colors.border },
                 ]}
               >
                 <Text style={styles.ctaText}>
-                  {step === 0 ? 'Hello, Echo' : 'Continue'}
+                  {step === 0 ? 'Hello, Echo 👋' : 'Continue'}
                 </Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
                 onPress={handleFinish}
+                activeOpacity={0.85}
                 style={[styles.ctaButton, { backgroundColor: colors.primary }]}
               >
-                <Text style={styles.ctaText}>Let's go</Text>
+                <Text style={styles.ctaText}>Let's go ✨</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -284,28 +309,69 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  root:            { flex: 1 },
-  safe:            { flex: 1 },
-  kav:             { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 24 },
-  dots:            { flexDirection: 'row', gap: 8, marginTop: 8 },
-  dot:             { width: 8, height: 8, borderRadius: 4 },
-  avatarContainer: { alignItems: 'center', justifyContent: 'center', minHeight: 200 },
-  particle:        { position: 'absolute', bottom: 200, width: 12, height: 12, borderRadius: 6, backgroundColor: '#D6EAFF' },
-  content:         { width: '100%', paddingHorizontal: 32, alignItems: 'center', minHeight: 180 },
-  mainText:        { fontSize: 26, fontWeight: '700', textAlign: 'center', marginBottom: 24, lineHeight: 36 },
+  root:         { flex: 1 },
+  safe:         { flex: 1 },
+  kav:          { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingVertical: 24 },
+
+  avatarGlow: {
+    position: 'absolute',
+    top: '15%',
+    alignSelf: 'center',
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+  },
+
+  dots: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  dot:  { height: 8, borderRadius: 4, width: 8 },
+  dotActive: { width: 24 },
+
+  avatarContainer: { alignItems: 'center', justifyContent: 'center' },
+
+  particle: {
+    position: 'absolute',
+    bottom: 220,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+
+  content:  { width: '100%', paddingHorizontal: 32, alignItems: 'center', minHeight: 190 },
+  mainText: { fontSize: 32, textAlign: 'center', marginBottom: 28, lineHeight: 42 },
+
   nameInput: {
     width: '100%',
-    borderWidth: 1.5,
-    borderRadius: 16,
+    borderWidth: 2,
+    borderRadius: 18,
     paddingHorizontal: 20,
     paddingVertical: 14,
     fontSize: 18,
     textAlign: 'center',
   },
-  chipsContainer:  { width: '100%', gap: 12 },
-  chip:            { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 12 },
-  chipText:        { fontSize: 15, fontWeight: '500', textAlign: 'center' },
-  ctaContainer:    { width: '100%', paddingHorizontal: 32 },
-  ctaButton:       { borderRadius: 18, paddingVertical: 16, alignItems: 'center' },
-  ctaText:         { color: '#fff', fontSize: 17, fontWeight: '700' },
+
+  chipsContainer: { width: '100%', gap: 10 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    gap: 10,
+  },
+  chipEmoji: { fontSize: 18 },
+  chipText:  { fontSize: 15, fontWeight: '600', flex: 1 },
+
+  ctaContainer: { width: '100%', paddingHorizontal: 32 },
+  ctaButton: {
+    borderRadius: 28,
+    paddingVertical: 17,
+    alignItems: 'center',
+    shadowColor: '#4F6BFF',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  ctaText: { color: '#fff', fontSize: 17, fontWeight: '800', letterSpacing: 0.3 },
 });

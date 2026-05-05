@@ -37,22 +37,17 @@ function RootLayout() {
   useEffect(() => {
     const initNotifications = async () => {
       try {
-        // Check if reminders are enabled (default to true if not set)
         const reminderEnabled = await AsyncStorage.getItem('echo_reminder_enabled');
+        // Default to enabled if preference not yet set
         const isEnabled = reminderEnabled === null || reminderEnabled === 'true';
-        
-        if (isEnabled) {
-          const isGranted = await setupNotifications();
-          if (isGranted) {
-            await scheduleDailyReminder();
-          }
-        }
-      } catch (error) {
-        // If there's an error, try to setup notifications anyway
+        if (!isEnabled) return;
+
         const isGranted = await setupNotifications();
         if (isGranted) {
           await scheduleDailyReminder();
         }
+      } catch (error) {
+        // Silently fail — notifications are non-critical
       }
     };
     initNotifications();

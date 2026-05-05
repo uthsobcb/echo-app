@@ -1,5 +1,6 @@
 import { useGamification } from '@/context/GamificationContext';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs } from 'expo-router';
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -12,35 +13,38 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '../../context/ThemeContext';
 
+// Badge variant controls colour and meaning
+type BadgeVariant = 'streak' | 'level';
+
 function TabIcon({
     focused,
     icon,
     label,
     badge,
+    badgeVariant = 'streak',
 }: {
     focused: boolean;
     icon: keyof typeof Ionicons.glyphMap;
     label: string;
     badge?: string | number;
+    badgeVariant?: BadgeVariant;
 }) {
     const { colors } = useTheme();
     const color = focused ? colors.primary : colors.textSecondary;
+
+    const badgeBg = badgeVariant === 'streak' ? '#F97316' : colors.primary;
 
     return (
         <View style={styles.tabItem}>
             <View>
                 <Ionicons name={icon} size={22} color={color} />
                 {badge !== undefined && (
-                    <View style={styles.tabBadge}>
+                    <View style={[styles.tabBadge, { backgroundColor: badgeBg }]}>
                         <Text style={styles.tabBadgeText}>{badge}</Text>
                     </View>
                 )}
             </View>
-            <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={[styles.tabLabel, { color }]}
-            >
+            <Text numberOfLines={1} style={[styles.tabLabel, { color }]}>
                 {label}
             </Text>
         </View>
@@ -58,7 +62,6 @@ function CreateButton({
 
     useEffect(() => {
         if (!state.dailyGoalMet) {
-            // Gentle pulse to draw attention when daily goal not met
             scale.value = withRepeat(
                 withSequence(
                     withTiming(1.08, { duration: 1000 }),
@@ -78,7 +81,13 @@ function CreateButton({
 
     return (
         <Pressable onPress={(e) => onPress?.(e)} style={styles.createWrap}>
-            <Animated.View style={[styles.createBtn, { backgroundColor: state.dailyGoalMet ? '#22C55E' : colors.primary }, animatedStyle]}>
+            <Animated.View
+                style={[
+                    styles.createBtn,
+                    { backgroundColor: state.dailyGoalMet ? '#22C55E' : colors.primary },
+                    animatedStyle,
+                ]}
+            >
                 {state.dailyGoalMet ? (
                     <Ionicons name="checkmark" size={28} color="#fff" />
                 ) : (
@@ -90,16 +99,33 @@ function CreateButton({
 }
 
 export default function TabsLayout() {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const { state } = useGamification();
+
+    // Only show streak badge when streak is meaningful (≥3 days)
+    const streakBadge = state.currentStreak >= 3 && state.currentStreak;
+    // Only show level badge when the user has actually levelled up (≥2)
+    const levelBadge = state.currentLevel >= 2 && state.currentLevel;
+
+    const tabBarGradient: [string, string] = isDark
+        ? ['rgba(13,21,38,0.96)', 'rgba(10,14,26,0.99)']
+        : ['rgba(248,252,255,0.95)', 'rgba(255,255,255,0.99)'];
 
     return (
         <Tabs
             screenOptions={{
                 headerShown: false,
                 tabBarShowLabel: false,
-                tabBarStyle: [styles.tabBar, { backgroundColor: colors.surface }],
+                tabBarStyle: styles.tabBar,
                 tabBarItemStyle: styles.tabBarItem,
+                tabBarBackground: () => (
+                    <LinearGradient
+                        colors={tabBarGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 0, y: 1 }}
+                        style={[StyleSheet.absoluteFill, styles.tabBarGradient]}
+                    />
+                ),
             }}
         >
             <Tabs.Screen
@@ -108,9 +134,10 @@ export default function TabsLayout() {
                     tabBarIcon: ({ focused }) => (
                         <TabIcon
                             focused={focused}
-                            icon="home"
+                            icon={focused ? 'home' : 'home-outline'}
                             label="Home"
-                            badge={state.currentStreak > 0 && !focused ? `${state.currentStreak}` : undefined}
+                            badge={!focused && streakBadge ? `🔥 ${state.currentStreak}` : undefined}
+                            badgeVariant="streak"
                         />
                     ),
                 }}
@@ -120,7 +147,11 @@ export default function TabsLayout() {
                 name="journal"
                 options={{
                     tabBarIcon: ({ focused }) => (
-                        <TabIcon focused={focused} icon="bookmark" label="Journal" />
+                        <TabIcon
+                            focused={focused}
+                            icon={focused ? 'bookmark' : 'bookmark-outline'}
+                            label="Journal"
+                        />
                     ),
                 }}
             />
@@ -137,7 +168,11 @@ export default function TabsLayout() {
                 name="insights"
                 options={{
                     tabBarIcon: ({ focused }) => (
-                        <TabIcon focused={focused} icon="bar-chart" label="Insights" />
+                        <TabIcon
+                            focused={focused}
+                            icon={focused ? 'bar-chart' : 'bar-chart-outline'}
+                            label="Insights"
+                        />
                     ),
                 }}
             />
@@ -148,9 +183,10 @@ export default function TabsLayout() {
                     tabBarIcon: ({ focused }) => (
                         <TabIcon
                             focused={focused}
-                            icon="person"
+                            icon={focused ? 'person' : 'person-outline'}
                             label="Profile"
-                            badge={!focused ? `${state.currentLevel}` : undefined}
+                            badge={!focused && levelBadge ? `Lv.${state.currentLevel}` : undefined}
+                            badgeVariant="level"
                         />
                     ),
                 }}
@@ -167,6 +203,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         borderTopWidth: 0,
         elevation: 0,
+        backgroundColor: 'transparent',
+    },
+
+    tabBarGradient: {
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: 'rgba(120,150,200,0.15)',
     },
 
     tabBarItem: {
@@ -192,15 +234,14 @@ const styles = StyleSheet.create({
 
     tabBadge: {
         position: 'absolute',
-        top: -4,
-        right: -10,
-        backgroundColor: '#F59E0B',
-        borderRadius: 8,
-        minWidth: 16,
-        height: 16,
+        top: -5,
+        right: -16,
+        borderRadius: 9,
+        minWidth: 18,
+        height: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 3,
+        paddingHorizontal: 5,
     },
     tabBadgeText: {
         color: '#fff',

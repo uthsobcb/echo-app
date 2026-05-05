@@ -5,6 +5,7 @@ import { logger } from '../service/logger';
 
 export interface ThemeColors {
   background: string;
+  backgroundGradient: readonly [string, string, string];
   surface: string;
   surfaceSecondary: string;
   text: string;
@@ -17,29 +18,31 @@ export interface ThemeColors {
 }
 
 const lightColors: ThemeColors = {
-  background:      '#EEF6FF',
-  surface:         '#FFFFFF',
-  surfaceSecondary:'#F0F7FF',
-  text:            '#1A2A4A',
-  textSecondary:   '#6B8CAE',
-  primary:         '#5B9BF8',
-  accent:          '#FFB347',
-  border:          '#C8DFF5',
+  background: '#EEF6FF',
+  backgroundGradient: ['#DFF0FF', '#EEF6FF', '#F6FAFF'],
+  surface: '#FFFFFF',
+  surfaceSecondary: '#F0F7FF',
+  text: '#1A2A4A',
+  textSecondary: '#6B8CAE',
+  primary: '#5B9BF8',
+  accent: '#FFB347',
+  border: '#C8DFF5',
   borderSecondary: '#E0EFFF',
-  echoCloud:       '#D6EAFF',
+  echoCloud: '#D6EAFF',
 };
 
 const darkColors: ThemeColors = {
-  background:      '#0A0E1A',
-  surface:         '#131929',
-  surfaceSecondary:'#1C2540',
-  text:            '#E8F0FF',
-  textSecondary:   '#7A94C0',
-  primary:         '#7EB8FF',
-  accent:          '#C084FC',
-  border:          '#2A3A5C',
+  background: '#0A0E1A',
+  backgroundGradient: ['#060912', '#0A0E1A', '#0D1222'],
+  surface: '#131929',
+  surfaceSecondary: '#1C2540',
+  text: '#E8F0FF',
+  textSecondary: '#7A94C0',
+  primary: '#7EB8FF',
+  accent: '#C084FC',
+  border: '#2A3A5C',
   borderSecondary: '#1C2540',
-  echoCloud:       '#1E2D50',
+  echoCloud: '#1E2D50',
 };
 
 interface ThemeContextType {
