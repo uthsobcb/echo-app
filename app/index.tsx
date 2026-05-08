@@ -14,11 +14,7 @@ export default function Index() {
   }
 
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/signin" />;
-  }
-
-  if (!onboardingComplete) {
-    return <Redirect href="/(onboarding)" />;
+    return <Redirect href={onboardingComplete ? '/(auth)/signin' : '/(onboarding)'} />;
   }
 
   return <Redirect href="/(tabs)" />;

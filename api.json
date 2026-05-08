@@ -7,7 +7,7 @@
     },
     "servers": [
         {
-            "url": "https://my-echo.space/api",
+            "url": "https://echo-next.vercel.app/api",
             "description": "Production Server"
         },
         {

@@ -114,10 +114,10 @@ export const EXPRESSIONS: Record<ExpressionName, ExpressionConfig> = {
 };
 
 export const MOUTH_PATHS: Record<ExpressionConfig['mouthType'], string> = {
-  bigSmile: 'M 80 104 C 88 122 114 122 122 104',
-  smile:    'M 82 106 C 90 120 112 120 120 106',
-  neutral:  'M 88 114 C 96 114 106 114 120 114',
-  frown:    'M 82 118 C 90 103 112 103 120 118',
-  open:     'M 84 103 C 90 124 112 126 118 104 C 114 121 88 120 84 103 Z',
-  smirk:    'M 88 110 C 98 124 112 122 120 108',
+  bigSmile: 'M 80 108 C 88 126 114 126 122 108',
+  smile:    'M 82 110 C 90 124 112 124 120 110',
+  neutral:  'M 88 118 C 96 118 106 118 120 118',
+  frown:    'M 82 122 C 90 107 112 107 120 122',
+  open:     'M 84 107 C 90 128 112 130 118 108 C 114 125 88 124 84 107 Z',
+  smirk:    'M 88 114 C 98 128 112 126 120 112',
 };

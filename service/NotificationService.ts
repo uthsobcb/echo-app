@@ -104,7 +104,6 @@ export const setupNotifications = async (): Promise<boolean> => {
             importance: Notifications.AndroidImportance.HIGH,
             vibrationPattern: [0, 250, 250, 250],
             lightColor: "#4F6BFF",
-            sound: 'default',
             enableVibrate: true,
             enableLights: true,
             showBadge: true,

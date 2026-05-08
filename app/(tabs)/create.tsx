@@ -5,7 +5,8 @@ import { logger } from '@/service/logger';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Toast } from '@/component/Toast';
 import { useTheme } from '@/context/ThemeContext';
 import { StreakData } from '@/types/data';
 
@@ -125,7 +126,7 @@ export default function Create() {
 
     const handleVoiceRecord = async (isRecording: boolean, setContent: React.Dispatch<React.SetStateAction<string>>) => {
         if (!ExpoSpeechRecognitionModule) {
-            Alert.alert('Not Available', 'Voice recording requires a development build, not Expo Go.');
+            Toast.info('Voice recording requires a development build, not Expo Go.');
             return false;
         }
         try {
@@ -136,7 +137,7 @@ export default function Create() {
                 contentSetterRef.current = setContent;
                 const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
                 if (!permission.granted) {
-                    Alert.alert('Permission needed', 'Speech recognition permission is required.');
+                    Toast.warning('Speech recognition permission is required.');
                     return false;
                 }
                 ExpoSpeechRecognitionModule.start({ lang: 'en-US', interimResults: false, maxAlternatives: 1 });
@@ -144,7 +145,7 @@ export default function Create() {
             }
         } catch (err) {
             logger.error('Failed to start speech recognition', err);
-            Alert.alert('Error', 'Failed to start speech recognition');
+            Toast.error('Failed to start speech recognition');
             return false;
         }
     };
@@ -153,7 +154,7 @@ export default function Create() {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert('Permission needed', 'Sorry, camera roll permissions are required!');
+                Toast.warning('Camera roll permission is required to attach photos.');
                 return undefined;
             }
             const result = await ImagePicker.launchImageLibraryAsync({
@@ -167,13 +168,13 @@ export default function Create() {
             }
         } catch (error) {
             logger.error('Failed to pick image', error);
-            Alert.alert('Error', 'Failed to pick image');
+            Toast.error('Failed to attach image');
         }
         return undefined;
     };
 
     const handleScanHandwriting = () => {
-        Alert.alert('Coming Soon', 'Handwriting OCR scanning will be available in a future update.');
+        Toast.info('Handwriting OCR scanning coming soon!');
     };
 
     return (

@@ -26,54 +26,68 @@ const VIEWBOX_H = 160;
 
 const SPARKLE_STAR = 'M 0 -4 L 1 -1 L 4 0 L 1 1 L 0 4 L -1 1 L -4 0 L -1 -1 Z';
 const SPARKLE_POSITIONS = [
-  { x: 26, y: 56 },
-  { x: 172, y: 50 },
-  { x: 18, y: 98 },
-  { x: 176, y: 88 },
-  { x: 96, y: 16 },
+  { x: 20, y: 58 },   // left side
+  { x: 170, y: 44 },  // upper-right bump
+  { x: 10, y: 96 },   // left edge mid
+  { x: 182, y: 88 },  // right edge mid
+  { x: 125, y: 12 },  // top of right bump
 ];
 
+// Cloud body path derived from the actual character outline (viewBox 1890×1890),
+// scaled to 200×160 via bounding-box normalisation (uniform scale 0.1343,
+// offset +5 x / +15 y), then smoothed with the midpoint quadratic-bezier
+// technique: start at mid(P39,P0), then Q Pi mid(Pi,Pi+1) for each vertex.
 const CLOUD_BODY_PATH = [
-  'M 40 126',
-  // bottom left bump
-  'C 36 138 46 146 62 140',
-  // between left and center bottom bumps
-  'C 72 135 80 132 88 138',
-  // center bottom bump (lowest)
-  'C 95 147 108 148 116 138',
-  // between center and right bottom bumps
-  'C 124 132 132 136 140 140',
-  // right bottom bump
-  'C 148 146 162 140 165 128',
-  // right lower side
-  'C 172 116 178 102 178 88',
-  // right side going up
-  'C 180 74 174 56 164 46',
-  // top-right bump
-  'C 158 32 148 24 140 24',
-  // into 3rd top bump
-  'C 134 14 120 8 112 18',
-  // center top bump (tallest)
-  'C 106 6 94 6 86 16',
-  // center-left top bump
-  'C 80 6 68 10 62 20',
-  // far-left top bump
-  'C 56 12 46 18 42 30',
-  // left upper side
-  'C 34 42 20 58 16 74',
-  // left side going down
-  'C 14 88 18 108 26 118',
-  // close bottom left
-  'C 28 124 34 126 40 126',
+  'M 195 89',
+  'Q 194 82 193 78',
+  'Q 191 73 188 69',
+  'Q 185 64 180 60',
+  'Q 175 55 170 53',
+  'Q 164 50 161 43',
+  'Q 157 36 153 31',
+  'Q 148 26 140 22',
+  'Q 132 17 123 16',
+  'Q 113 15 105 17',
+  'Q 97 19 90 24',
+  'Q 83 28 78 26',
+  'Q 72 24 68 24',
+  'Q 63 24 58 25',
+  'Q 52 26 48 29',
+  'Q 43 31 38 37',
+  'Q 33 42 30 49',
+  'Q 27 56 23 59',
+  'Q 18 62 15 67',
+  'Q 11 71 9 76',
+  'Q 6 81 6 88',
+  'Q 5 94 6 100',
+  'Q 7 105 9 109',
+  'Q 11 113 15 117',
+  'Q 18 120 22 123',
+  'Q 25 126 34 128',
+  'Q 42 130 50 129',
+  'Q 58 128 63 132',
+  'Q 67 136 72 139',
+  'Q 76 141 83 143',
+  'Q 90 145 96 145',
+  'Q 101 145 110 143',
+  'Q 119 141 127 136',
+  'Q 135 131 141 133',
+  'Q 146 134 152 134',
+  'Q 157 134 162 133',
+  'Q 167 131 172 129',
+  'Q 177 126 181 123',
+  'Q 185 119 189 113',
+  'Q 192 107 194 101',
+  'Q 195 95 195 89',
   'Z',
 ].join(' ');
 
 function CloudShape({ color, strokeColor }: { color: string; strokeColor: string }) {
   return (
     <G>
-      {/* Drop shadow */}
-      <Path d={CLOUD_BODY_PATH} fill={strokeColor} transform="translate(8, 8)" />
-      {/* Main cloud body */}
+      {/* Drop shadow offset */}
+      <Path d={CLOUD_BODY_PATH} fill={strokeColor} transform="translate(9, 9)" />
+      {/* Main body */}
       <Path
         d={CLOUD_BODY_PATH}
         fill={color}
@@ -108,26 +122,30 @@ function Face({ config, textColor }: { config: typeof EXPRESSIONS[ExpressionName
   } = config;
 
   const ry = 20 * eyeScaleY;
-  const leftEyeX = 72, rightEyeX = 130, eyeBaseY = 83;
-  const browBaseY = 56;
+
+  // Face positions tuned to match logo proportions
+  const leftEyeX  = 70;
+  const rightEyeX = 132;
+  const eyeBaseY  = 87;
+  const browBaseY = 62;
 
   return (
     <G>
       {/* Blush */}
-      <Ellipse cx="48"  cy="110" rx="12" ry="7" fill="#FFB6C1" opacity={blushOpacity} />
-      <Ellipse cx="154" cy="110" rx="12" ry="7" fill="#FFB6C1" opacity={blushOpacity} />
+      <Ellipse cx="46"  cy="112" rx="12" ry="7" fill="#FFB6C1" opacity={blushOpacity} />
+      <Ellipse cx="156" cy="112" rx="12" ry="7" fill="#FFB6C1" opacity={blushOpacity} />
 
-      {/* Eyes — large solid ovals like the logo */}
-      <Ellipse cx={leftEyeX}  cy={eyeBaseY} rx="14" ry={Math.max(ry, 1)} fill={textColor} />
-      <Ellipse cx={rightEyeX} cy={eyeBaseY} rx="14" ry={Math.max(ry, 1)} fill={textColor} />
+      {/* Eyes — large vertical ovals matching the logo */}
+      <Ellipse cx={leftEyeX}  cy={eyeBaseY} rx="13" ry={Math.max(ry, 1)} fill={textColor} />
+      <Ellipse cx={rightEyeX} cy={eyeBaseY} rx="13" ry={Math.max(ry, 1)} fill={textColor} />
 
-      {/* Subtle eye highlights */}
-      <Circle cx={leftEyeX  - 5} cy={eyeBaseY - 7} r="2.5" fill="white" opacity={0.65} />
-      <Circle cx={rightEyeX - 5} cy={eyeBaseY - 7} r="2.5" fill="white" opacity={0.65} />
+      {/* Eye highlights */}
+      <Circle cx={leftEyeX  - 4} cy={eyeBaseY - 7} r="2.5" fill="white" opacity={0.65} />
+      <Circle cx={rightEyeX - 4} cy={eyeBaseY - 7} r="2.5" fill="white" opacity={0.65} />
 
-      {/* Eyebrows (hidden for smile expressions, matching logo) */}
+      {/* Eyebrows */}
       <Path
-        d={`M ${leftEyeX - 14} ${browBaseY + browOffsetY} Q ${leftEyeX} ${browBaseY - 8 + browOffsetY} ${leftEyeX + 14} ${browBaseY + browOffsetY}`}
+        d={`M ${leftEyeX - 13} ${browBaseY + browOffsetY} Q ${leftEyeX} ${browBaseY - 8 + browOffsetY} ${leftEyeX + 13} ${browBaseY + browOffsetY}`}
         stroke={textColor}
         strokeWidth="3.5"
         strokeLinecap="round"
@@ -136,7 +154,7 @@ function Face({ config, textColor }: { config: typeof EXPRESSIONS[ExpressionName
         transform={`rotate(${browRotateLeft}, ${leftEyeX}, ${browBaseY + browOffsetY})`}
       />
       <Path
-        d={`M ${rightEyeX - 14} ${browBaseY + browOffsetY} Q ${rightEyeX} ${browBaseY - 8 + browOffsetY} ${rightEyeX + 14} ${browBaseY + browOffsetY}`}
+        d={`M ${rightEyeX - 13} ${browBaseY + browOffsetY} Q ${rightEyeX} ${browBaseY - 8 + browOffsetY} ${rightEyeX + 13} ${browBaseY + browOffsetY}`}
         stroke={textColor}
         strokeWidth="3.5"
         strokeLinecap="round"
@@ -164,18 +182,17 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
   animated = true,
   speaking = false,
 }) => {
-  const floatY = useSharedValue(0);
-  const faceOpacity = useSharedValue(1);
+  const floatY       = useSharedValue(0);
+  const faceOpacity  = useSharedValue(1);
   const speakOpacity = useSharedValue(0);
   const prevExpression = useRef<ExpressionName>(expression);
 
-  // Idle float
   useEffect(() => {
     if (animated) {
       floatY.value = withRepeat(
         withSequence(
           withTiming(-4, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-          withTiming(4, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+          withTiming( 4, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
         ),
         -1,
         true,
@@ -185,7 +202,6 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
     }
   }, [animated, floatY]);
 
-  // Expression crossfade
   useEffect(() => {
     if (prevExpression.current !== expression) {
       faceOpacity.value = withSequence(
@@ -196,7 +212,6 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
     }
   }, [expression, faceOpacity]);
 
-  // Speaking mouth pulse
   useEffect(() => {
     if (speaking) {
       speakOpacity.value = withRepeat(
@@ -215,57 +230,39 @@ export const EchoAvatar: React.FC<EchoAvatarProps> = ({
   const floatStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: floatY.value }],
   }));
-
   const faceStyle = useAnimatedStyle(() => ({
     opacity: faceOpacity.value,
   }));
-
   const speakStyle = useAnimatedStyle(() => ({
     opacity: speakOpacity.value,
   }));
 
-  const svgW = size;
-  const svgH = (VIEWBOX_H / VIEWBOX_W) * size;
+  const svgW   = size;
+  const svgH   = (VIEWBOX_H / VIEWBOX_W) * size;
   const config = EXPRESSIONS[expression];
   const cloudColor = '#FFFFFF';
-  const textColor = '#050505';
+  const textColor  = '#050505';
+  const vb = `0 0 ${VIEWBOX_W} ${VIEWBOX_H}`;
 
   return (
     <Animated.View style={[{ width: svgW, height: svgH }, floatStyle]}>
-      {/* Cloud + sparkles layer */}
-      <Svg
-        width={svgW}
-        height={svgH}
-        viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
-        style={StyleSheet.absoluteFill}
-      >
+      {/* Cloud body + sparkles */}
+      <Svg width={svgW} height={svgH} viewBox={vb} style={StyleSheet.absoluteFill}>
         <CloudShape color={cloudColor} strokeColor={textColor} />
         <Sparkles opacity={config.sparkleOpacity} />
       </Svg>
 
-      {/* Face layer with crossfade */}
+      {/* Face — crossfades on expression change */}
       <Animated.View style={[StyleSheet.absoluteFill, faceStyle]}>
-        <Svg
-          width={svgW}
-          height={svgH}
-          viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
-        >
+        <Svg width={svgW} height={svgH} viewBox={vb}>
           <Face config={config} textColor={textColor} />
         </Svg>
       </Animated.View>
 
-      {/* Speaking mouth overlay */}
+      {/* Speaking mouth pulse */}
       <Animated.View style={[StyleSheet.absoluteFill, speakStyle]}>
-        <Svg
-          width={svgW}
-          height={svgH}
-          viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
-        >
-          <Path
-            d={MOUTH_PATHS.open}
-            fill={textColor}
-            opacity={0.85}
-          />
+        <Svg width={svgW} height={svgH} viewBox={vb}>
+          <Path d={MOUTH_PATHS.open} fill={textColor} opacity={0.85} />
         </Svg>
       </Animated.View>
     </Animated.View>

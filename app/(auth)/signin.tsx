@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Animated,
     Image,
     KeyboardAvoidingView,
@@ -16,13 +15,30 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Toast } from '../../component/Toast';
 
-import { useAuthRequest } from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
 import { config } from '../../service/config';
 import { useStorage } from '../../context/StorageContext';
 
-WebBrowser.maybeCompleteAuthSession();
+// expo-auth-session requires the native ExpoCryptoAES module.
+// Guard the import so the screen doesn't crash when that module isn't
+// linked yet (e.g. development client built before expo-crypto was added).
+type AuthHook = (cfg: {
+    iosClientId: string;
+    androidClientId: string;
+    webClientId: string;
+}) => [unknown, unknown, (opts?: unknown) => Promise<unknown>];
+
+let _useAuthRequest: AuthHook = () => [null, null, async () => ({ type: 'dismiss' })];
+
+try {
+    const googleAuth = require('expo-auth-session/providers/google');
+    const wb = require('expo-web-browser');
+    wb.maybeCompleteAuthSession();
+    _useAuthRequest = googleAuth.useAuthRequest;
+} catch {
+    // ExpoCryptoAES not available — Google auth will be shown as disabled
+}
 
 const googleConfigured =
     !!config.GOOGLE_IOS_CLIENT_ID ||
@@ -44,7 +60,7 @@ export default function SignIn() {
 
     // Pass a placeholder when unconfigured so the hook doesn't throw.
     // The Google button is disabled when !googleConfigured so auth is never attempted.
-    const [request, response, promptAsync] = useAuthRequest({
+    const [request, response, promptAsync] = _useAuthRequest({
         iosClientId: config.GOOGLE_IOS_CLIENT_ID || 'NOT_CONFIGURED',
         androidClientId: config.GOOGLE_ANDROID_CLIENT_ID || 'NOT_CONFIGURED',
         webClientId: config.GOOGLE_WEB_CLIENT_ID || 'NOT_CONFIGURED',
@@ -72,13 +88,13 @@ export default function SignIn() {
             await loginWithGoogle(token);
             router.replace('/(tabs)');
         } catch (error) {
-            Alert.alert('Google Login Failed', error instanceof Error ? error.message : 'Unknown error');
+            Toast.error(error instanceof Error ? error.message : 'Unknown error', 'Google Login Failed');
         } finally { setLoading(false); }
     };
 
     const handleSignUp = async () => {
-        if (!email || !password || !name) { Alert.alert('Error', 'Please fill in all fields'); return; }
-        if (password.length < 6) { Alert.alert('Error', 'Password must be at least 6 characters'); return; }
+        if (!email || !password || !name) { Toast.warning('Please fill in all fields'); return; }
+        if (password.length < 6) { Toast.warning('Password must be at least 6 characters'); return; }
         try {
             setLoading(true);
             const formData = new FormData();
@@ -86,21 +102,21 @@ export default function SignIn() {
             formData.append('email', email.toLowerCase());
             formData.append('password', password);
             await registerAPI(formData);
-            Alert.alert('Success! 🎉', 'Account created! Please login.');
+            Toast.success('Account created! Please login.', 'Welcome! 🎉');
             setIsLogin(true);
         } catch (error) {
-            Alert.alert('Registration Failed', error instanceof Error ? error.message : 'Unknown error');
+            Toast.error(error instanceof Error ? error.message : 'Unknown error', 'Registration Failed');
         } finally { setLoading(false); }
     };
 
     const handleLogin = async () => {
-        if (!email || !password) { Alert.alert('Error', 'Please fill in all fields'); return; }
+        if (!email || !password) { Toast.warning('Please fill in all fields'); return; }
         try {
             setLoading(true);
             await loginAsAPI({ email: email.toLowerCase(), password });
             router.replace('/(tabs)');
         } catch (error) {
-            Alert.alert('Login Failed', error instanceof Error ? error.message : 'Unknown error');
+            Toast.error(error instanceof Error ? error.message : 'Unknown error', 'Login Failed');
         } finally { setLoading(false); }
     };
 
@@ -123,7 +139,7 @@ export default function SignIn() {
 
                     <View style={styles.logoWrap}>
                         <Image
-                            source={require('../../assets/images/logo.png')}
+                            source={require('../../assets/images/EchoLogo.png')}
                             style={styles.logo}
                             resizeMode="contain"
                         />

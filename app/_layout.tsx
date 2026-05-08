@@ -2,6 +2,7 @@ import "../global.css";
 
 import ErrorBoundary from "@/component/ErrorBoundary";
 import CelebrationOverlay from "@/component/gamification/CelebrationOverlay";
+import { ToastContainer } from "@/component/Toast";
 import { GamificationProvider } from "@/context/GamificationContext";
 import { StorageProvider } from "@/context/StorageContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -14,6 +15,7 @@ import {
 } from "@expo-google-fonts/caveat";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Slot } from "expo-router";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 
@@ -56,16 +58,19 @@ function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <StorageProvider>
-          <GamificationProvider>
-            <Slot />
-            <CelebrationOverlay />
-          </GamificationProvider>
-        </StorageProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <StorageProvider>
+            <GamificationProvider>
+              <Slot />
+              <CelebrationOverlay />
+              <ToastContainer />
+            </GamificationProvider>
+          </StorageProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 

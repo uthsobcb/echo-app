@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
     cancelAnimation,
     Easing,
@@ -288,9 +288,11 @@ export default function MeditationPage() {
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <SafeAreaView style={styles.safeArea}>
                     <View style={styles.summaryContainer}>
-                        <View style={styles.summaryIcon}>
-                            <Ionicons name="checkmark-circle" size={80} color={colors.primary} />
-                        </View>
+                        <Image
+                            source={require('../../assets/images/echo-meditate.png')}
+                            style={styles.meditateHeroImg}
+                            resizeMode="contain"
+                        />
                         <Text style={[styles.summaryTitle, { color: colors.text }]}>
                             Session Complete!
                         </Text>
@@ -355,6 +357,11 @@ export default function MeditationPage() {
                     </View>
                     
                     <View style={styles.setupContainer}>
+                        <Image
+                            source={require('../../assets/images/echo-meditate.png')}
+                            style={styles.meditateHeroImg}
+                            resizeMode="contain"
+                        />
                         <Text style={styles.setupTitle}>Box Breathing</Text>
                         <Text style={styles.setupSubtitle}>Select your session length</Text>
                         
@@ -612,14 +619,16 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#fff',
     },
+    meditateHeroImg: {
+        width: 180,
+        height: 180,
+        marginBottom: 16,
+    },
     summaryContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 24,
-    },
-    summaryIcon: {
-        marginBottom: 24,
     },
     summaryTitle: {
         fontSize: 28,

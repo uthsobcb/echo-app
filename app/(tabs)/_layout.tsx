@@ -11,6 +11,7 @@ import Animated, {
     withSequence,
     withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 
 // Badge variant controls colour and meaning
@@ -101,6 +102,7 @@ function CreateButton({
 export default function TabsLayout() {
     const { colors, isDark } = useTheme();
     const { state } = useGamification();
+    const insets = useSafeAreaInsets();
 
     // Only show streak badge when streak is meaningful (≥3 days)
     const streakBadge = state.currentStreak >= 3 && state.currentStreak;
@@ -116,90 +118,92 @@ export default function TabsLayout() {
             screenOptions={{
                 headerShown: false,
                 tabBarShowLabel: false,
-                tabBarStyle: styles.tabBar,
+                tabBarStyle: {
+                    ...styles.tabBar,
+                    height: 64 + insets.bottom,
+                    paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
+                },
                 tabBarItemStyle: styles.tabBarItem,
-                tabBarBackground: () => (
-                    <LinearGradient
-                        colors={tabBarGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 0, y: 1 }}
-                        style={[StyleSheet.absoluteFill, styles.tabBarGradient]}
-                    />
-                ),
-            }}
-        >
-            <Tabs.Screen
-                name="index"
-                options={{
-                    tabBarIcon: ({ focused }) => (
-                        <TabIcon
-                            focused={focused}
-                            icon={focused ? 'home' : 'home-outline'}
-                            label="Home"
-                            badge={!focused && streakBadge ? `🔥 ${state.currentStreak}` : undefined}
-                            badgeVariant="streak"
+                    tabBarBackground: () => (
+                        <LinearGradient
+                            colors={tabBarGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 0, y: 1 }}
+                            style={[StyleSheet.absoluteFill, styles.tabBarGradient]}
                         />
                     ),
                 }}
-            />
+            >
+                <Tabs.Screen
+                    name="index"
+                    options={{
+                        tabBarIcon: ({ focused }) => (
+                            <TabIcon
+                                focused={focused}
+                                icon={focused ? 'home' : 'home-outline'}
+                                label="Home"
+                                badge={!focused && streakBadge ? `🔥 ${state.currentStreak}` : undefined}
+                                badgeVariant="streak"
+                            />
+                        ),
+                    }}
+                />
 
-            <Tabs.Screen
-                name="journal"
-                options={{
-                    tabBarIcon: ({ focused }) => (
-                        <TabIcon
-                            focused={focused}
-                            icon={focused ? 'bookmark' : 'bookmark-outline'}
-                            label="Journal"
-                        />
-                    ),
-                }}
-            />
+                <Tabs.Screen
+                    name="journal"
+                    options={{
+                        tabBarIcon: ({ focused }) => (
+                            <TabIcon
+                                focused={focused}
+                                icon={focused ? 'bookmark' : 'bookmark-outline'}
+                                label="Journal"
+                            />
+                        ),
+                    }}
+                />
 
-            <Tabs.Screen
-                name="create"
-                options={{
-                    tabBarIcon: () => null,
-                    tabBarButton: (props) => <CreateButton onPress={props.onPress} />,
-                }}
-            />
+                <Tabs.Screen
+                    name="create"
+                    options={{
+                        tabBarIcon: () => null,
+                        tabBarButton: (props) => <CreateButton onPress={props.onPress} />,
+                    }}
+                />
 
-            <Tabs.Screen
-                name="insights"
-                options={{
-                    tabBarIcon: ({ focused }) => (
-                        <TabIcon
-                            focused={focused}
-                            icon={focused ? 'bar-chart' : 'bar-chart-outline'}
-                            label="Insights"
-                        />
-                    ),
-                }}
-            />
+                <Tabs.Screen
+                    name="insights"
+                    options={{
+                        tabBarIcon: ({ focused }) => (
+                            <TabIcon
+                                focused={focused}
+                                icon={focused ? 'bar-chart' : 'bar-chart-outline'}
+                                label="Insights"
+                            />
+                        ),
+                    }}
+                />
 
-            <Tabs.Screen
-                name="profile"
-                options={{
-                    tabBarIcon: ({ focused }) => (
-                        <TabIcon
-                            focused={focused}
-                            icon={focused ? 'person' : 'person-outline'}
-                            label="Profile"
-                            badge={!focused && levelBadge ? `Lv.${state.currentLevel}` : undefined}
-                            badgeVariant="level"
-                        />
-                    ),
-                }}
-            />
+                <Tabs.Screen
+                    name="profile"
+                    options={{
+                        tabBarIcon: ({ focused }) => (
+                            <TabIcon
+                                focused={focused}
+                                icon={focused ? 'person' : 'person-outline'}
+                                label="Profile"
+                                badge={!focused && levelBadge ? `Lv.${state.currentLevel}` : undefined}
+                                badgeVariant="level"
+                            />
+                        ),
+                    }}
+                />
         </Tabs>
     );
 }
 
 const styles = StyleSheet.create({
     tabBar: {
-        height: 76,
         paddingTop: 10,
-        paddingBottom: 12,
         paddingHorizontal: 14,
         borderTopWidth: 0,
         elevation: 0,

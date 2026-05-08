@@ -1,233 +1,143 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { EchoAvatar } from '@/component/EchoAvatar';
+import { Toast } from '@/component/Toast';
+import { useChat } from '@/context/ChatContext';
+import { useTheme } from '@/context/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useChat } from '../../context/ChatContext';
-import { useTheme } from '../../context/ThemeContext';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LocalConversation } from '../../types/data';
 
-const AVATAR_COLORS = ['#4F6BFF', '#7B3FE4', '#059669', '#DB2777', '#F59E0B', '#EF4444', '#06B6D4', '#8B5CF6'];
+const formatTimestamp = (ts: number) => {
+    const date = new Date(ts);
+    const now = new Date();
+    const diffMins = Math.floor((now.getTime() - date.getTime()) / 60000);
+    if (diffMins < 1)  return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (date.toDateString() === now.toDateString())
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
 
-const getAvatarColor = (id: string) => {
-    const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+const getLastMessage = (conv: LocalConversation) => {
+    const msg = conv.messages[conv.messages.length - 1];
+    if (!msg) return 'No messages yet';
+    const prefix = msg.sender === 'user' ? 'You: ' : 'Echo: ';
+    return prefix + (msg.text.length > 55 ? msg.text.slice(0, 55) + '…' : msg.text);
 };
 
 export default function ChatListScreen() {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const { conversations, deleteConversation, createConversation, isLoading } = useChat();
-    const router = useRouter();
+    const router  = useRouter();
+    const insets  = useSafeAreaInsets();
     const [search, setSearch] = useState('');
 
-    const sortedConversations = useMemo(() => {
-        const sorted = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
-        if (!search.trim()) return sorted;
+    const sorted = useMemo(() => {
+        const list = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+        if (!search.trim()) return list;
         const q = search.toLowerCase();
-        return sorted.filter(c =>
+        return list.filter(c =>
             c.title.toLowerCase().includes(q) ||
             c.messages.some(m => m.text.toLowerCase().includes(q))
         );
     }, [conversations, search]);
 
-    const handleSelectConversation = useCallback((id: string) => {
+    const handleOpen  = useCallback((id: string) => router.push(`/(chat)/chat?id=${id}`), [router]);
+    const handleNew   = useCallback(() => {
+        const id = createConversation();
         router.push(`/(chat)/chat?id=${id}`);
-    }, [router]);
-
-    const handleNewChat = useCallback(() => {
-        const newId = createConversation();
-        router.push(`/(chat)/chat?id=${newId}`);
     }, [createConversation, router]);
 
-    const handleDeleteConversation = useCallback((id: string, title: string) => {
-        Alert.alert(
-            'Delete Conversation',
-            `Delete "${title}"? This cannot be undone.`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => deleteConversation(id),
-                },
-            ]
+    const handleDelete = useCallback((id: string, title: string) => {
+        Toast.show(
+            `"${title}" deleted`,
+            'info',
         );
+        deleteConversation(id);
     }, [deleteConversation]);
 
-    const formatTimestamp = (timestamp: number) => {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-
-        const isToday = date.toDateString() === now.toDateString();
-        if (isToday) {
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (date.toDateString() === yesterday.toDateString()) {
-            return 'Yesterday';
-        }
-
-        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    };
-
-    const getLastMessage = (conv: LocalConversation) => {
-        const lastMsg = conv.messages[conv.messages.length - 1];
-        if (!lastMsg) return 'No messages yet';
-        const prefix = lastMsg.sender === 'user' ? 'You: ' : 'Echo: ';
-        const text = lastMsg.text.length > 50 ? lastMsg.text.substring(0, 50) + '...' : lastMsg.text;
-        return prefix + text;
-    };
-
-    const renderConversation = ({ item }: { item: LocalConversation }) => {
-        const avatarColor = getAvatarColor(item.id);
-        const messageCount = item.messages.filter(m => m.sender === 'bot').length;
-
+    const renderItem = ({ item }: { item: LocalConversation }) => {
+        const lastMsg = item.messages[item.messages.length - 1];
+        const isEcho  = lastMsg?.sender === 'bot';
         return (
             <TouchableOpacity
-                style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingHorizontal: 16,
-                    paddingVertical: 14,
-                    borderBottomWidth: 1,
-                    borderBottomColor: colors.border,
-                }}
-                onPress={() => handleSelectConversation(item.id)}
-                onLongPress={() => handleDeleteConversation(item.id, item.title)}
-                activeOpacity={0.6}
+                style={[styles.convRow, { borderBottomColor: colors.border }]}
+                onPress={() => handleOpen(item.id)}
+                onLongPress={() => handleDelete(item.id, item.title)}
+                activeOpacity={0.65}
             >
-                {/* Avatar */}
-                <View
-                    style={{
-                        width: 50,
-                        height: 50,
-                        borderRadius: 25,
-                        backgroundColor: avatarColor + '18',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 14,
-                    }}
-                >
-                    <MaterialCommunityIcons name="robot-outline" size={24} color={avatarColor} />
+                {/* Echo avatar bubble */}
+                <View style={styles.convAvatarWrap}>
+                    <EchoAvatar expression="calm" size={44} animated={false} />
                 </View>
 
-                {/* Content */}
-                <View style={{ flex: 1, marginRight: 8 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <Text
-                            style={{ fontSize: 16, fontWeight: '700', color: colors.text, flex: 1, marginRight: 8 }}
-                            numberOfLines={1}
-                        >
+                <View style={styles.convContent}>
+                    <View style={styles.convTopRow}>
+                        <Text style={[styles.convTitle, { color: colors.text }]} numberOfLines={1}>
                             {item.title}
                         </Text>
-                        <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                        <Text style={[styles.convTime, { color: colors.textSecondary }]}>
                             {formatTimestamp(item.updatedAt)}
                         </Text>
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text
-                            style={{ fontSize: 14, color: colors.textSecondary, flex: 1 }}
-                            numberOfLines={1}
-                        >
-                            {getLastMessage(item)}
-                        </Text>
-                        {messageCount > 0 && (
-                            <View
-                                style={{
-                                    backgroundColor: colors.primary + '20',
-                                    borderRadius: 10,
-                                    paddingHorizontal: 7,
-                                    paddingVertical: 2,
-                                    marginLeft: 8,
-                                }}
-                            >
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>
-                                    {messageCount}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
+                    <Text style={[styles.convSnippet, { color: colors.textSecondary }]} numberOfLines={1}>
+                        {getLastMessage(item)}
+                    </Text>
                 </View>
+
+                <Ionicons name="chevron-forward" size={16} color={colors.border} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
         );
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+        <View style={[styles.root, { backgroundColor: colors.background }]}>
             {/* Header */}
-            <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                    <TouchableOpacity
-                        style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 20,
-                            backgroundColor: colors.surfaceSecondary,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                        onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
-                    >
-                        <Ionicons name="chevron-back" size={22} color={colors.text} />
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>
-                        Conversations
-                    </Text>
-                    <TouchableOpacity
-                        style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 20,
-                            backgroundColor: colors.primary,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                        onPress={handleNewChat}
-                    >
-                        <Ionicons name="create-outline" size={20} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Search bar */}
-                <View
-                    style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: colors.surfaceSecondary,
-                        borderRadius: 14,
-                        paddingHorizontal: 14,
-                        height: 44,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                    }}
+            <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+                <TouchableOpacity
+                    style={[styles.headerBack, { backgroundColor: colors.surfaceSecondary }]}
+                    onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
                 >
-                    <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
+                    <Ionicons name="chevron-back" size={20} color={colors.text} />
+                </TouchableOpacity>
+
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Messages</Text>
+
+                <TouchableOpacity style={styles.headerNew} onPress={handleNew}>
+                    <LinearGradient colors={['#4F6BFF', '#7B3FE4']} style={styles.headerNewGradient}>
+                        <Ionicons name="create-outline" size={18} color="#fff" />
+                    </LinearGradient>
+                </TouchableOpacity>
+            </View>
+
+            {/* Search */}
+            <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+                <View style={[styles.searchBar, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+                    <Ionicons name="search-outline" size={17} color={colors.textSecondary} />
                     <TextInput
-                        style={{ flex: 1, fontSize: 15, color: colors.text, marginLeft: 10 }}
-                        placeholder="Search conversations..."
+                        style={[styles.searchInput, { color: colors.text }]}
+                        placeholder="Search conversations…"
                         placeholderTextColor={colors.textSecondary}
                         value={search}
                         onChangeText={setSearch}
                     />
                     {search.length > 0 && (
                         <TouchableOpacity onPress={() => setSearch('')}>
-                            <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                            <Ionicons name="close-circle" size={17} color={colors.textSecondary} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -235,68 +145,33 @@ export default function ChatListScreen() {
 
             {/* Content */}
             {isLoading ? (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <View style={styles.centred}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 12 }}>Loading chats...</Text>
+                    <Text style={[styles.emptyHint, { color: colors.textSecondary, marginTop: 12 }]}>Loading…</Text>
                 </View>
-            ) : sortedConversations.length === 0 ? (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}>
+            ) : sorted.length === 0 ? (
+                <View style={styles.centred}>
                     {search.trim() ? (
                         <>
-                            <Ionicons name="search" size={48} color={colors.textSecondary} />
-                            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginTop: 16, textAlign: 'center' }}>
-                                No results for "{search}"
-                            </Text>
-                            <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 8, textAlign: 'center' }}>
-                                Try a different search term
+                            <Ionicons name="search" size={44} color={colors.textSecondary} />
+                            <Text style={[styles.emptyTitle, { color: colors.text }]}>No results</Text>
+                            <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>
+                                Nothing matched "{search}"
                             </Text>
                         </>
                     ) : (
                         <>
-                            <View
-                                style={{
-                                    width: 100,
-                                    height: 100,
-                                    borderRadius: 50,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginBottom: 20,
-                                    overflow: 'hidden',
-                                }}
-                            >
-                                <LinearGradient
-                                    colors={['#4F6BFF', '#7B3FE4']}
-                                    style={{ width: 100, height: 100, alignItems: 'center', justifyContent: 'center' }}
-                                >
-                                    <MaterialCommunityIcons name="chat-processing-outline" size={44} color="#fff" />
-                                </LinearGradient>
+                            <View style={styles.emptyAvatarWrap}>
+                                <EchoAvatar expression="happy" size={100} animated />
                             </View>
-                            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text, textAlign: 'center', marginBottom: 8 }}>
-                                Chat with Echo
+                            <Text style={[styles.emptyTitle, { color: colors.text }]}>Chat with Echo</Text>
+                            <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>
+                                Your AI journaling companion. Reflect, explore, or just talk.
                             </Text>
-                            <Text style={{ fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
-                                Echo is your AI journaling companion. Ask questions, reflect on your entries, or just talk.
-                            </Text>
-                            <TouchableOpacity
-                                onPress={handleNewChat}
-                                activeOpacity={0.85}
-                                style={{ borderRadius: 16, overflow: 'hidden' }}
-                            >
-                                <LinearGradient
-                                    colors={['#4F6BFF', '#7B3FE4']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        paddingVertical: 14,
-                                        paddingHorizontal: 28,
-                                        gap: 8,
-                                    }}
-                                >
-                                    <Ionicons name="chatbubbles" size={20} color="#fff" />
-                                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Start a Conversation</Text>
+                            <TouchableOpacity onPress={handleNew} activeOpacity={0.85} style={styles.emptyBtn}>
+                                <LinearGradient colors={['#4F6BFF', '#7B3FE4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.emptyBtnGradient}>
+                                    <Ionicons name="chatbubbles" size={18} color="#fff" />
+                                    <Text style={styles.emptyBtnText}>Start a Conversation</Text>
                                 </LinearGradient>
                             </TouchableOpacity>
                         </>
@@ -304,47 +179,77 @@ export default function ChatListScreen() {
                 </View>
             ) : (
                 <FlatList
-                    data={sortedConversations}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderConversation}
+                    data={sorted}
+                    keyExtractor={i => i.id}
+                    renderItem={renderItem}
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 80 }}
+                    contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
                 />
             )}
 
-            {/* Floating new chat button when list has items */}
-            {sortedConversations.length > 0 && (
+            {/* FAB */}
+            {sorted.length > 0 && (
                 <TouchableOpacity
-                    onPress={handleNewChat}
+                    onPress={handleNew}
                     activeOpacity={0.85}
-                    style={{
-                        position: 'absolute',
-                        bottom: 24,
-                        right: 20,
-                        borderRadius: 28,
-                        overflow: 'hidden',
-                        shadowColor: '#4F6BFF',
-                        shadowOpacity: 0.35,
-                        shadowRadius: 12,
-                        shadowOffset: { width: 0, height: 4 },
-                        elevation: 8,
-                    }}
+                    style={[styles.fab, { bottom: insets.bottom + 20 }]}
                 >
-                    <LinearGradient
-                        colors={['#4F6BFF', '#7B3FE4']}
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingVertical: 14,
-                            paddingHorizontal: 22,
-                            gap: 8,
-                        }}
-                    >
-                        <Ionicons name="add" size={22} color="#fff" />
-                        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>New Chat</Text>
+                    <LinearGradient colors={['#4F6BFF', '#7B3FE4']} style={styles.fabGradient}>
+                        <Ionicons name="add" size={20} color="#fff" />
+                        <Text style={styles.fabText}>New Chat</Text>
                     </LinearGradient>
                 </TouchableOpacity>
             )}
-        </SafeAreaView>
+        </View>
     );
 }
+
+const styles = StyleSheet.create({
+    root: { flex: 1 },
+
+    // Header
+    header: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 16, paddingBottom: 12,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    headerBack: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { flex: 1, fontSize: 20, fontWeight: '800', textAlign: 'center' },
+    headerNew: { width: 36, height: 36, borderRadius: 18, overflow: 'hidden' },
+    headerNewGradient: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+
+    // Search
+    searchWrap: { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+    searchBar: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        borderRadius: 12, paddingHorizontal: 12, height: 40, borderWidth: 1,
+    },
+    searchInput: { flex: 1, fontSize: 14 },
+
+    // Conversation row
+    convRow: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 16, paddingVertical: 12,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    convAvatarWrap: { width: 44, height: 36, marginRight: 12 },
+    convContent: { flex: 1 },
+    convTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
+    convTitle: { fontSize: 15, fontWeight: '700', flex: 1, marginRight: 8 },
+    convTime: { fontSize: 11, fontWeight: '500' },
+    convSnippet: { fontSize: 13 },
+
+    // Empty / loading
+    centred: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36 },
+    emptyAvatarWrap: { marginBottom: 16 },
+    emptyTitle: { fontSize: 22, fontWeight: '800', textAlign: 'center', marginBottom: 8 },
+    emptyHint: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 28 },
+    emptyBtn: { borderRadius: 14, overflow: 'hidden' },
+    emptyBtnGradient: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 13, paddingHorizontal: 24 },
+    emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+    // FAB
+    fab: { position: 'absolute', right: 20, borderRadius: 28, overflow: 'hidden', elevation: 8, shadowColor: '#4F6BFF', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+    fabGradient: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 20, gap: 6 },
+    fabText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+});
