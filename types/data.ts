@@ -153,6 +153,48 @@ export type CelebrationType =
     | { type: 'level_up'; newLevel: number; previousLevel: number }
     | { type: 'daily_goal_complete' };
 
+// ─── Space (community) ──────────────────────────────────────────────
+
+export interface SpaceMessage {
+    _id: string;
+    content: string;
+    author: string;
+    createdAt: string;
+}
+
+export interface SpaceDrawStatus {
+    drawCount: number;
+    canDraw: boolean;
+    requiresMessage: boolean;
+    nextAvailableAt?: string;
+}
+
+export interface SpaceLeaderboardEntry {
+    _id: string;
+    count: number;
+    name: string;
+    image?: string;
+}
+
+// ─── Screening (PHQ-9 / GAD-7) ───────────────────────────────────────
+
+export type ScreeningType = 'phq9' | 'gad7';
+export type ScreeningSeverity = 'minimal' | 'mild' | 'moderate' | 'moderately-severe' | 'severe';
+
+export interface ScreeningResult {
+    id: string;
+    type: ScreeningType;
+    totalScore: number;
+    severity: ScreeningSeverity;
+}
+
+export interface ScreeningHistoryEntry {
+    type: ScreeningType;
+    totalScore: number;
+    severity: ScreeningSeverity;
+    createdAt: string;
+}
+
 export interface AuthResponse {
     token?: string;
     message?: string;

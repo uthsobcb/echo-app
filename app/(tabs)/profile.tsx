@@ -299,6 +299,22 @@ export default function Profile() {
                     </View>
                 </View>
 
+                {!isLocal && (
+                    <>
+                        <Text style={dynamicStyles.sectionLabel}>WELLNESS</Text>
+                        <View style={dynamicStyles.card}>
+                            <TouchableOpacity style={dynamicStyles.settingRow} onPress={() => router.push('/(screening)')}>
+                                <View style={dynamicStyles.settingIcon}><Ionicons name="pulse-outline" size={19} color={colors.primary} /></View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={dynamicStyles.settingTitle}>Wellness Check-In</Text>
+                                    <Text style={dynamicStyles.settingSubtitle}>PHQ-9 / GAD-7 self-assessment</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                    </>
+                )}
+
                 <Text style={dynamicStyles.sectionLabel}>ACCOUNT</Text>
                 <View style={dynamicStyles.card}>
                     <View style={dynamicStyles.settingRow}>

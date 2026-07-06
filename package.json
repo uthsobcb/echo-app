@@ -20,7 +20,6 @@
     "@revopush/react-native-code-push": "^1.5.1",
     "expo": "~54.0.36",
     "expo-asset": "~12.0.13",
-    "expo-auth-session": "~7.0.11",
     "expo-av": "~16.0.8",
     "expo-constants": "~18.0.13",
     "expo-crypto": "~15.0.9",

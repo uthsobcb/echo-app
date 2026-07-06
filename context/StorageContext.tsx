@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { api } from '../service/api';
+import { api, loadServerUrl } from '../service/api';
 import { logger } from '../service/logger';
 import { setupNotifications } from '../service/NotificationService';
 import { Entry, MoodCreateResponse, Stats, StreakData, User } from '../types/data';
@@ -20,7 +20,6 @@ interface StorageContextType {
     appMode: AppMode;
     loginAsLocal: (userData?: Partial<User>) => Promise<void>;
     loginAsAPI: (credentials: { email: string; password: string }) => Promise<void>;
-    loginWithGoogle: (idToken: string) => Promise<void>;
     registerAPI: (formData: FormData) => Promise<void>;
     logout: () => Promise<void>;
     addEntry: (entry: Omit<Entry, 'id' | 'createdAt'>) => Promise<(Entry & { streakData?: StreakData }) | void>;
@@ -65,6 +64,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const init = async () => {
         try {
+            await loadServerUrl(); // must run before any request
             const storedMode = await AsyncStorage.getItem('appMode') as AppMode;
             const mode = storedMode || 'local';
             setAppMode(mode);
@@ -249,26 +249,6 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
 
-    const loginWithGoogle = async (idToken: string) => {
-        logger.debug('Context: loginWithGoogle called');
-        try {
-            const result = await api.auth.googleLogin(idToken);
-            if (result.token) {
-                await AsyncStorage.setItem('token', result.token);
-                setAppMode('api');
-                setIsAuthenticated(true);
-                await AsyncStorage.setItem('appMode', 'api');
-                await loadData('api');
-
-                // Fetch and save push token after successful Google login
-                setupNotifications().catch(e => logger.error('Notification setup failed', e));
-            }
-        } catch (e) {
-            logger.error('Context: loginWithGoogle error', e);
-            throw e;
-        }
-    };
-
     const registerAPI = async (formData: FormData) => {
         await api.auth.register(formData);
     };
@@ -364,7 +344,6 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 appMode,
                 loginAsLocal,
                 loginAsAPI,
-                loginWithGoogle,
                 registerAPI,
                 logout,
                 addEntry,

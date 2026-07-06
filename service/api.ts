@@ -6,13 +6,58 @@ import {
     Entry,
     InsightsResponse,
     MoodCreateResponse,
+    ScreeningHistoryEntry,
+    ScreeningResult,
+    ScreeningType,
+    SpaceDrawStatus,
+    SpaceLeaderboardEntry,
+    SpaceMessage,
     Todo,
     User,
 } from '../types/data';
 import { config } from './config';
 import { logger } from './logger';
+import { normalizeServerUrl } from './serverUrl';
 
-const BASE_URL = config.API_BASE_URL;
+// ponytail: mutable module-level base URL — every `${BASE_URL}` below is read at
+// call time, so pointing the app at a self-hosted server needs no other plumbing.
+let BASE_URL = config.API_BASE_URL;
+
+const SERVER_URL_KEY = 'serverUrl';
+
+export const getServerUrl = () => BASE_URL;
+export const isCustomServer = () => BASE_URL !== config.API_BASE_URL;
+
+/** Restore a previously saved self-hosted server. Called once on app start. */
+export async function loadServerUrl() {
+    const saved = await AsyncStorage.getItem(SERVER_URL_KEY);
+    BASE_URL = saved || config.API_BASE_URL;
+    return BASE_URL;
+}
+
+/** Save a self-hosted server URL, or pass null to go back to the default server. */
+export async function setServerUrl(input: string | null) {
+    const previous = BASE_URL;
+    if (input) {
+        BASE_URL = normalizeServerUrl(input);
+        await AsyncStorage.setItem(SERVER_URL_KEY, BASE_URL);
+    } else {
+        BASE_URL = config.API_BASE_URL;
+        await AsyncStorage.removeItem(SERVER_URL_KEY);
+    }
+    // A token from another server is worthless and must not be sent to this one.
+    if (BASE_URL !== previous) await AsyncStorage.removeItem('token');
+    return BASE_URL;
+}
+
+/** Reachability probe, so a bad address fails on the setup screen, not mid-login. */
+export async function checkServer(apiBase: string) {
+    const response = await fetchWithTimeout(`${apiBase}/health`, { timeout: 8000 } as RequestInit);
+    if (!response.ok) throw new Error(`Server replied ${response.status}`);
+    const data = await response.json();
+    if (data?.status !== 'healthy') throw new Error('Server is reachable but not healthy');
+    return data;
+}
 
 async function getHeaders(isMultipart = false) {
     try {
@@ -107,26 +152,6 @@ export const api = {
                 return handleResponse(response);
             } catch (e) {
                 logger.error('API: Logout failed', e);
-                throw e;
-            }
-        },
-
-        googleLogin: async (idToken: string) => {
-            logger.debug('API: Google Login...');
-            try {
-                const response = await fetch(`${BASE_URL}/auth/google`, {
-                    method: 'POST',
-                    headers: await getHeaders(),
-                    body: JSON.stringify({ idToken }),
-                });
-                logger.debug('API: Google Login Response status:', response.status);
-                const data = await handleResponse(response);
-                if (data.token) {
-                    await AsyncStorage.setItem('token', data.token);
-                }
-                return data as AuthResponse;
-            } catch (e) {
-                logger.error('API: Google Login failed', e);
                 throw e;
             }
         },
@@ -310,6 +335,71 @@ export const api = {
                 headers: await getHeaders(),
             });
             return handleResponse(response) as Promise<InsightsResponse>;
+        },
+    },
+
+    // ─── Space (anonymous community board) ──────────────────────────
+    space: {
+        getDrawStatus: async () => {
+            const response = await fetch(`${BASE_URL}/space/draw`, {
+                headers: await getHeaders(),
+            });
+            return handleResponse(response) as Promise<SpaceDrawStatus>;
+        },
+
+        recordDraw: async () => {
+            const response = await fetch(`${BASE_URL}/space/draw`, {
+                method: 'POST',
+                headers: await getHeaders(),
+            });
+            return handleResponse(response);
+        },
+
+        getMessage: async () => {
+            const response = await fetch(`${BASE_URL}/space/message`, {
+                headers: await getHeaders(),
+            });
+            if (response.status === 404) return null;
+            const data = await handleResponse(response);
+            return data.data as SpaceMessage;
+        },
+
+        postMessage: async (content: string) => {
+            const response = await fetch(`${BASE_URL}/space/message`, {
+                method: 'POST',
+                headers: await getHeaders(),
+                body: JSON.stringify({ content }),
+            });
+            return handleResponse(response) as Promise<{ message: string; data: SpaceMessage }>;
+        },
+
+        getLeaderboard: async () => {
+            const response = await fetch(`${BASE_URL}/space/leaderboard`, {
+                headers: await getHeaders(),
+            });
+            const data = await handleResponse(response);
+            return (data.data ?? []) as SpaceLeaderboardEntry[];
+        },
+    },
+
+    // ─── Screening (PHQ-9 / GAD-7 self-report) ──────────────────────
+    screening: {
+        submit: async (type: ScreeningType, answers: number[]) => {
+            const response = await fetch(`${BASE_URL}/screening`, {
+                method: 'POST',
+                headers: await getHeaders(),
+                body: JSON.stringify({ type, answers }),
+            });
+            return handleResponse(response) as Promise<ScreeningResult>;
+        },
+
+        getHistory: async (type?: ScreeningType) => {
+            const url = type ? `${BASE_URL}/screening?type=${type}` : `${BASE_URL}/screening`;
+            const response = await fetch(url, {
+                headers: await getHeaders(),
+            });
+            const data = await handleResponse(response);
+            return (data.history ?? []) as ScreeningHistoryEntry[];
         },
     },
 };

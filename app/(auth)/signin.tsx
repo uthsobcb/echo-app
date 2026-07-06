@@ -17,37 +17,29 @@ import {
 } from 'react-native';
 import { Toast } from '../../component/Toast';
 
-import { config } from '../../service/config';
+import { getServerUrl, isCustomServer } from '../../service/api';
 import { useStorage } from '../../context/StorageContext';
 
-// expo-auth-session requires the native ExpoCryptoAES module.
-// Guard the import so the screen doesn't crash when that module isn't
-// linked yet (e.g. development client built before expo-crypto was added).
-type AuthHook = (cfg: {
-    iosClientId: string;
-    androidClientId: string;
-    webClientId: string;
-}) => [unknown, unknown, (opts?: unknown) => Promise<unknown>];
-
-let _useAuthRequest: AuthHook = () => [null, null, async () => ({ type: 'dismiss' })];
-
+// ponytail: the API's /auth/google is a server-side, cookie-session web flow
+// (GET → Google consent → GET /auth/google/callback → sets an httpOnly cookie
+// → redirects to the website's /entry). It has no JSON/token response, so it
+// can't establish a session for this app's Bearer-token API client. Opening
+// it in an in-app browser lets a user complete Google consent and land on
+// the *website*, logged in there — it does not log them into this app.
+// Real fix: a backend endpoint that verifies a Google ID token and returns
+// { token, user } like /auth/login does.
+let _webBrowser: typeof import('expo-web-browser') | null = null;
 try {
-    const googleAuth = require('expo-auth-session/providers/google');
     const wb = require('expo-web-browser');
     wb.maybeCompleteAuthSession();
-    _useAuthRequest = googleAuth.useAuthRequest;
+    _webBrowser = wb;
 } catch {
-    // ExpoCryptoAES not available — Google auth will be shown as disabled
+    // expo-web-browser not available — Google button will be shown as disabled
 }
-
-const googleConfigured =
-    !!config.GOOGLE_IOS_CLIENT_ID ||
-    !!config.GOOGLE_ANDROID_CLIENT_ID ||
-    !!config.GOOGLE_WEB_CLIENT_ID;
 
 export default function SignIn() {
     const router = useRouter();
-    const { loginAsAPI, registerAPI, loginWithGoogle } = useStorage();
+    const { loginAsAPI, registerAPI } = useStorage();
     const [isLogin, setIsLogin] = useState(false); // false = Sign Up, true = Login
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -58,21 +50,6 @@ export default function SignIn() {
     const slideAnim = useRef(new Animated.Value(40)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
-    // Pass a placeholder when unconfigured so the hook doesn't throw.
-    // The Google button is disabled when !googleConfigured so auth is never attempted.
-    const [request, response, promptAsync] = _useAuthRequest({
-        iosClientId: config.GOOGLE_IOS_CLIENT_ID || 'NOT_CONFIGURED',
-        androidClientId: config.GOOGLE_ANDROID_CLIENT_ID || 'NOT_CONFIGURED',
-        webClientId: config.GOOGLE_WEB_CLIENT_ID || 'NOT_CONFIGURED',
-    });
-
-    useEffect(() => {
-        if (response?.type === 'success') {
-            const { id_token } = response.params;
-            handleGoogleLogin(id_token);
-        }
-    }, [response]);
-
     useEffect(() => {
         slideAnim.setValue(30);
         fadeAnim.setValue(0);
@@ -82,14 +59,21 @@ export default function SignIn() {
         ]).start();
     }, [isLogin]);
 
-    const handleGoogleLogin = async (token: string) => {
+    const handleGoogleWebLogin = async () => {
+        if (!_webBrowser) {
+            Toast.error('Google Sign-In needs a development build', 'Not Available');
+            return;
+        }
         try {
             setLoading(true);
-            await loginWithGoogle(token);
-            router.replace('/(tabs)');
-        } catch (error) {
-            Toast.error(error instanceof Error ? error.message : 'Unknown error', 'Google Login Failed');
-        } finally { setLoading(false); }
+            await _webBrowser.openAuthSessionAsync(`${getServerUrl()}/auth/google`);
+        } finally {
+            setLoading(false);
+            Toast.info(
+                "That signs you into the Echo website, not this app — mobile Google Sign-In isn't supported by the API yet. Use email/password below.",
+                'Google Sign-In'
+            );
+        }
     };
 
     const handleSignUp = async () => {
@@ -270,8 +254,8 @@ export default function SignIn() {
                         {/* Google Sign-In Button */}
                         <TouchableOpacity
                             style={styles.googleBtn}
-                            onPress={() => promptAsync()}
-                            disabled={!request || loading || !googleConfigured}
+                            onPress={handleGoogleWebLogin}
+                            disabled={loading || !_webBrowser}
                             activeOpacity={0.85}
                         >
                             <View style={styles.googleIconWrap}>
@@ -288,6 +272,15 @@ export default function SignIn() {
                             </TouchableOpacity>
                             <View style={styles.localDivider} />
                         </View>
+
+                        <TouchableOpacity onPress={() => router.push('/(auth)/server')} style={styles.serverRow}>
+                            <MaterialCommunityIcons name="server-network" size={15} color="#8A93AD" />
+                            <Text style={styles.serverText}>
+                                {isCustomServer()
+                                    ? getServerUrl().replace(/^https?:\/\//, '').replace(/\/api$/, '')
+                                    : 'Use your own server'}
+                            </Text>
+                        </TouchableOpacity>
 
                         <View style={styles.privacyRow}>
                             <MaterialCommunityIcons name="shield-check" size={16} color="#4F6BFF" />
@@ -385,6 +378,8 @@ const styles = StyleSheet.create({
     localDivider: { flex: 1, height: 1, backgroundColor: '#E5E8F0' },
     localText: { fontSize: 13, color: '#4F6BFF', fontWeight: '600' },
 
+    serverRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 18 },
+    serverText: { color: '#8A93AD', fontSize: 13, fontWeight: '600' },
     privacyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
     privacyText: { fontSize: 12, color: '#7A8499' },
 });

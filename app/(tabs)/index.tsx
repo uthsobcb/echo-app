@@ -307,6 +307,27 @@ export default function Home() {
               </Text>
             </View>
           </TouchableOpacity>
+
+          {/* Space */}
+          {appMode === "api" && (
+            <TouchableOpacity
+              style={styles.gridCell}
+              onPress={() => router.push("/(space)")}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.gridCardSurface, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={styles.gridCardTop}>
+                  <View style={[styles.gridSurfaceIcon, { backgroundColor: "#FFF7ED" }]}>
+                    <Ionicons name="planet-outline" size={20} color="#F97316" />
+                  </View>
+                </View>
+                <Text style={[styles.gridSurfaceTitle, { color: colors.text }]}>Space</Text>
+                <Text style={[styles.gridSurfaceSub, { color: colors.textSecondary }]}>
+                  Community thoughts
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ──────────────────────── DAILY PROMPT ────────────────────── */}
