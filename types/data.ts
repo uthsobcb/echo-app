@@ -49,13 +49,6 @@ export interface MoodCreateResponse {
     streakData: StreakData;
 }
 
-export interface MoodHistoryItem {
-    mood: string;
-    score: number;
-    _id: string;
-    createdAt?: string;
-}
-
 export interface Todo {
     _id: string;
     userId: string;
@@ -102,52 +95,6 @@ export interface ChatSendResponse {
     messages: ChatMessage[];
 }
 
-export interface SpaceDrawStatus {
-    drawCount: number;
-    canDraw: boolean;
-    requiresMessage: boolean;
-    nextAvailableAt?: string;
-}
-
-export interface SpaceMessage {
-    _id: string;
-    content: string;
-    author: string;
-    createdAt: string;
-}
-
-export interface LeaderboardEntry {
-    _id: string;
-    count: number;
-    name: string;
-    image?: string;
-}
-
-export interface Post {
-    _id: string;
-    title: string;
-    content: string;
-    slug: string;
-    author?: string;
-    published: boolean;
-    coverImage?: string;
-    excerpt?: string;
-    tags?: string[];
-    createdAt: string;
-}
-
-export interface Notification {
-    _id: string;
-    userId: string | null;
-    title: string;
-    body: string;
-    type: 'JOURNAL_REMINDER' | 'STREAK_RECOVERY' | 'TODO_REMINDER' | 'CUSTOM' | 'SYSTEM';
-    data?: Record<string, unknown>;
-    scheduledAt?: string;
-    sentAt?: string | null;
-    createdAt: string;
-}
-
 export interface InsightsResponse {
     stats: {
         totalEntries: number;
@@ -176,12 +123,6 @@ export interface InsightsResponse {
         maxStreak: number;
         subscription: string;
     };
-}
-
-export interface AdminStats {
-    users: User[];
-    entries: number;
-    mood: Record<string, unknown>[];
 }
 
 // ─── Gamification ────────────────────────────────────────────────

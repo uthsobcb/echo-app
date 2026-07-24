@@ -45,7 +45,9 @@ app-example
 /android
 android/app/*.jks
 android/app/*.keystore
-release-artifacts/.keystore-secrets.env
-release-artifacts/**/keystore/*
+release-artifacts/
 *.aab
 *.apk
+
+# generated build output
+/build-android
