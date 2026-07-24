@@ -15,13 +15,12 @@ import {
 } from "@expo-google-fonts/caveat";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Slot } from "expo-router";
+import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 
 SplashScreen.preventAutoHideAsync();
-
-import codePush from "@revopush/react-native-code-push";
 
 function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -74,6 +73,12 @@ function RootLayout() {
   );
 }
 
-export default codePush({
-  checkFrequency: codePush.CheckFrequency.ON_APP_START,
-})(RootLayout);
+// CodePush is native-only OTA patching; requiring it during web bundling/SSR
+// crashes (its Alert adapter assumes react-native's native module shape).
+let withCodePush = (Component: typeof RootLayout) => Component;
+if (Platform.OS !== "web") {
+  const codePush = require("@revopush/react-native-code-push");
+  withCodePush = codePush({ checkFrequency: codePush.CheckFrequency.ON_APP_START });
+}
+
+export default withCodePush(RootLayout);
