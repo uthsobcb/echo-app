@@ -135,8 +135,7 @@ export default function Profile() {
         const settingSubtitle: TextStyle = { fontSize: 12, color: colors.textSecondary, marginTop: 1 };
         const divider: ViewStyle = { height: 1, backgroundColor: colors.borderSecondary, marginLeft: 64 };
         const footer: TextStyle = { textAlign: 'center' as const, color: colors.textSecondary, fontSize: 12, marginTop: 24 };
-        const badgeItemName: TextStyle = { fontSize: 11, fontWeight: '700', color: colors.text, textAlign: 'center' as const };
-        return { safe, pageTitle, localBanner, localTitle, localSub, sectionLabel, card, settingRow, settingIcon, settingTitle, settingSubtitle, divider, footer, badgeItemName };
+        return { safe, pageTitle, localBanner, localTitle, localSub, sectionLabel, card, settingRow, settingIcon, settingTitle, settingSubtitle, divider, footer };
     }, [colors]);
 
     return (
@@ -216,49 +215,51 @@ export default function Profile() {
                     </View>
                 </LinearGradient>
 
-                {/* ── Badge Showcase ── */}
+                {/* ── Badge Showcase (Ahead-style stacked skill bars) ── */}
                 <Text style={dynamicStyles.sectionLabel}>BADGE SHOWCASE</Text>
                 <View style={dynamicStyles.card}>
-                    <View style={styles.badgeGrid}>
+                    <View style={styles.skillList}>
                         {ALL_BADGES.map((badge) => {
                             const isEarned = earnedBadges.includes(badge.id);
                             const progress = Math.min(1, entriesCount / badge.required);
+                            const current = Math.min(entriesCount, badge.required);
                             return (
                                 <TouchableOpacity
                                     key={badge.id}
-                                    style={styles.badgeItem}
+                                    style={styles.skillRow}
                                     onPress={() => setSelectedBadge(badge)}
                                     activeOpacity={0.7}
                                 >
-                                    <ProgressRing
-                                        progress={isEarned ? 1 : progress}
-                                        size={68}
-                                        strokeWidth={4}
-                                        color={isEarned ? badge.color : '#93C5FD'}
-                                        bgColor={colors.surfaceSecondary}
-                                    >
-                                        <View style={[
-                                            styles.badgeIconInner,
-                                            { backgroundColor: isEarned ? badge.color + '20' : colors.surfaceSecondary }
-                                        ]}>
+                                    <View style={styles.skillHeader}>
+                                        <View style={[styles.skillIconWrap, { backgroundColor: isEarned ? badge.color + '20' : colors.surfaceSecondary }]}>
                                             <MaterialCommunityIcons
                                                 name={badge.icon as any}
-                                                size={24}
+                                                size={16}
                                                 color={isEarned ? badge.color : colors.textSecondary}
                                             />
                                         </View>
-                                    </ProgressRing>
-                                    {!isEarned && (
-                                        <View style={styles.lockOverlay}>
-                                            <Ionicons name="lock-closed" size={10} color="#fff" />
-                                        </View>
-                                    )}
-                                    <Text
-                                        style={[styles.badgeItemName, dynamicStyles.badgeItemName, !isEarned && { color: colors.textSecondary }]}
-                                        numberOfLines={1}
-                                    >
-                                        {badge.name}
-                                    </Text>
+                                        <Text style={[styles.skillName, { color: colors.text }]} numberOfLines={1}>
+                                            {badge.name}
+                                        </Text>
+                                        {isEarned ? (
+                                            <Ionicons name="checkmark-circle" size={16} color={badge.color} />
+                                        ) : (
+                                            <Text style={[styles.skillFraction, { color: colors.textSecondary }]}>
+                                                {current}/{badge.required}
+                                            </Text>
+                                        )}
+                                    </View>
+                                    <View style={[styles.skillBarBase, { backgroundColor: colors.surfaceSecondary }]}>
+                                        <View
+                                            style={[
+                                                styles.skillBarFill,
+                                                {
+                                                    width: `${Math.max(3, progress * 100)}%`,
+                                                    backgroundColor: isEarned ? badge.color : '#93C5FD',
+                                                },
+                                            ]}
+                                        />
+                                    </View>
                                 </TouchableOpacity>
                             );
                         })}
@@ -432,11 +433,14 @@ const styles = StyleSheet.create({
     xpBarBg: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' },
     xpBarFill: { height: '100%', borderRadius: 3, backgroundColor: '#FCD34D' },
     xpBarText: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '600', marginTop: 6, textAlign: 'center' },
-    badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 10, gap: 12, justifyContent: 'center' },
-    badgeItem: { width: '30%', alignItems: 'center', marginBottom: 10, position: 'relative' },
-    badgeIconInner: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-    lockOverlay: { position: 'absolute', top: 48, right: '25%', backgroundColor: '#B0BAD0', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
-    badgeItemName: { textAlign: 'center', marginTop: 4 },
+    skillList: { padding: 16, gap: 16 },
+    skillRow: { gap: 8 },
+    skillHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    skillIconWrap: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    skillName: { flex: 1, fontSize: 13, fontWeight: '700' },
+    skillFraction: { fontSize: 11, fontWeight: '700' },
+    skillBarBase: { height: 8, borderRadius: 4, overflow: 'hidden' },
+    skillBarFill: { height: '100%', borderRadius: 4 },
     nextBadgeBanner: { marginHorizontal: 10, marginBottom: 10, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center' },
     logoutBtn: { marginHorizontal: 16, marginTop: 24, backgroundColor: '#FEF2F2', borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, gap: 8 },
     logoutText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },

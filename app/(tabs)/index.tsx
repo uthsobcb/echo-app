@@ -77,7 +77,7 @@ export default function Home() {
     : ["#4F6BFF", "#7B3FE4", "#A855F7"];
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         bounces
@@ -150,17 +150,32 @@ export default function Home() {
             </View>
           </View>
 
-          {/* XP progress bar */}
-          <View style={styles.xpSection}>
-            <View style={styles.xpBarBg}>
-              <View
-                style={[styles.xpBarFill, { width: `${Math.max(3, xpBarProgress * 100)}%` as any }]}
+          {/* Daily check-in ring — tap to write today's entry (Liven-style mood ring) */}
+          <TouchableOpacity
+            style={styles.ringWrap}
+            onPress={() => router.push("/(tabs)/create")}
+            activeOpacity={0.85}
+          >
+            <ProgressRing
+              progress={xpBarProgress}
+              size={116}
+              strokeWidth={9}
+              color={gam.dailyGoalMet ? "#22C55E" : "#FCD34D"}
+              bgColor="rgba(255,255,255,0.18)"
+            >
+              <Ionicons
+                name={gam.dailyGoalMet ? "checkmark" : "add"}
+                size={22}
+                color="#fff"
               />
-            </View>
+              <Text style={styles.ringLabel}>
+                {gam.dailyGoalMet ? "Entry Done!" : "Write Entry"}
+              </Text>
+            </ProgressRing>
             <Text style={styles.xpHint}>
               {gam.xpInCurrentLevel} / {gam.xpToNextLevel} XP → Lv.{gam.currentLevel + 1}
             </Text>
-          </View>
+          </TouchableOpacity>
 
           {/* Streak at risk */}
           {gam.streakAtRisk && !gam.dailyGoalMet && (
@@ -471,14 +486,9 @@ const styles = StyleSheet.create({
   statLabel:{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginTop: 2, fontWeight: "600" },
   statDivider: { width: 1, height: 32, backgroundColor: "rgba(255,255,255,0.2)" },
 
-  xpSection: { gap: 6 },
-  xpBarBg: {
-    height: 6, borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    overflow: "hidden",
-  },
-  xpBarFill: { height: "100%", borderRadius: 3, backgroundColor: "#FCD34D" },
-  xpHint: { color: "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: "600", textAlign: "right" },
+  ringWrap: { alignItems: "center", gap: 8 },
+  ringLabel: { color: "#fff", fontSize: 11, fontWeight: "800", marginTop: 2 },
+  xpHint: { color: "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: "600" },
 
   riskBanner: {
     flexDirection: "row",

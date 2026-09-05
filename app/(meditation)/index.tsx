@@ -288,11 +288,13 @@ export default function MeditationPage() {
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <SafeAreaView style={styles.safeArea}>
                     <View style={styles.summaryContainer}>
-                        <Image
-                            source={require('../../assets/images/echo-meditate.png')}
-                            style={styles.meditateHeroImg}
-                            resizeMode="contain"
-                        />
+                        <View style={styles.meditateHeroWrap}>
+                            <Image
+                                source={require('../../assets/images/echo-meditate.png')}
+                                style={styles.meditateHeroImg}
+                                resizeMode="cover"
+                            />
+                        </View>
                         <Text style={[styles.summaryTitle, { color: colors.text }]}>
                             Session Complete!
                         </Text>
@@ -357,11 +359,13 @@ export default function MeditationPage() {
                     </View>
                     
                     <View style={styles.setupContainer}>
-                        <Image
-                            source={require('../../assets/images/echo-meditate.png')}
-                            style={styles.meditateHeroImg}
-                            resizeMode="contain"
-                        />
+                        <View style={styles.meditateHeroWrap}>
+                            <Image
+                                source={require('../../assets/images/echo-meditate.png')}
+                                style={styles.meditateHeroImg}
+                                resizeMode="cover"
+                            />
+                        </View>
                         <Text style={styles.setupTitle}>Box Breathing</Text>
                         <Text style={styles.setupSubtitle}>Select your session length</Text>
                         
@@ -619,10 +623,22 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#fff',
     },
-    meditateHeroImg: {
+    // ponytail: echo-meditate.png has a flat white canvas baked into the asset
+    // (not real transparency) — cropping to a circle scaled ~1.7x hides the
+    // white margin without touching the source image. Real fix: re-export the
+    // asset with a transparent background.
+    meditateHeroWrap: {
         width: 180,
         height: 180,
+        borderRadius: 90,
+        overflow: 'hidden',
         marginBottom: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    meditateHeroImg: {
+        width: 180 * 1.7,
+        height: 180 * 1.7,
     },
     summaryContainer: {
         flex: 1,

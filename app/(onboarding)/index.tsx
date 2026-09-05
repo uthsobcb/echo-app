@@ -133,7 +133,11 @@ export default function OnboardingScreen() {
       if (i >= target.length) { clearInterval(iv); setEchoSpeaking(false); }
     }, 36);
     return () => clearInterval(iv);
-  }, [step, name, selectedFeeling, selectedFocus]);
+    // name/selectedFeeling/selectedFocus are only read by stepText() on later
+    // steps, after they're already final (no back button) — depending on them
+    // here would replay the typewriter on every keystroke of the name input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   // ── Expression per step ──────────────────────────────────────────────────
   useEffect(() => {
@@ -249,12 +253,13 @@ export default function OnboardingScreen() {
 
       {/* Meditate illustration — welcome & final steps */}
       {(step === 0 || step === 4) && (
-        <Image
-          source={require('../../assets/images/echo-meditate.png')}
-          style={styles.meditateGlow}
-          resizeMode="contain"
-          pointerEvents="none"
-        />
+        <View style={styles.meditateGlow} pointerEvents="none">
+          <Image
+            source={require('../../assets/images/echo-meditate.png')}
+            style={styles.meditateGlowImg}
+            resizeMode="cover"
+          />
+        </View>
       )}
 
       <SafeAreaView style={styles.safe}>
@@ -377,9 +382,15 @@ const styles = StyleSheet.create({
     position: 'absolute', top: '15%', alignSelf: 'center',
     width: 260, height: 260, borderRadius: 130,
   },
+  // ponytail: same white-canvas asset issue as the meditation screen — crop to
+  // a circle scaled up ~1.7x to hide the baked-in white background.
   meditateGlow: {
     position: 'absolute', top: '10%', alignSelf: 'center',
-    width: 300, height: 300, opacity: 0.38,
+    width: 300, height: 300, borderRadius: 150, overflow: 'hidden',
+    opacity: 0.38, alignItems: 'center', justifyContent: 'center',
+  },
+  meditateGlowImg: {
+    width: 300 * 1.7, height: 300 * 1.7,
   },
 
   dots:      { flexDirection: 'row', gap: 6, marginTop: 8 },
