@@ -318,32 +318,32 @@ export default function Profile() {
 
                 <Text style={dynamicStyles.sectionLabel}>ACCOUNT</Text>
                 <View style={dynamicStyles.card}>
-                    <View style={dynamicStyles.settingRow}>
+                    <TouchableOpacity style={dynamicStyles.settingRow} onPress={() => router.push('/profile/edit')}>
                         <View style={dynamicStyles.settingIcon}><Ionicons name="person-outline" size={19} color={colors.primary} /></View>
                         <View style={{ flex: 1 }}>
                             <Text style={dynamicStyles.settingTitle}>Edit Profile</Text>
                             <Text style={dynamicStyles.settingSubtitle}>Update your personal information</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-                    </View>
+                    </TouchableOpacity>
                     <View style={dynamicStyles.divider} />
-                    <View style={dynamicStyles.settingRow}>
+                    <TouchableOpacity style={dynamicStyles.settingRow} onPress={() => router.push('/profile/security')}>
                         <View style={dynamicStyles.settingIcon}><Ionicons name="shield-checkmark-outline" size={19} color={colors.primary} /></View>
                         <View style={{ flex: 1 }}>
                             <Text style={dynamicStyles.settingTitle}>Privacy & Security</Text>
                             <Text style={dynamicStyles.settingSubtitle}>Manage your data</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-                    </View>
+                    </TouchableOpacity>
                     <View style={dynamicStyles.divider} />
-                    <View style={dynamicStyles.settingRow}>
+                    <TouchableOpacity style={dynamicStyles.settingRow} onPress={() => router.push('/profile/subscription')}>
                         <View style={dynamicStyles.settingIcon}><Ionicons name="card-outline" size={19} color={colors.primary} /></View>
                         <View style={{ flex: 1 }}>
                             <Text style={dynamicStyles.settingTitle}>Subscription</Text>
                             <Text style={dynamicStyles.settingSubtitle}>{user.subscription ? `${user.subscription.charAt(0).toUpperCase() + user.subscription.slice(1)} Plan` : 'Free Plan'}</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-                    </View>
+                    </TouchableOpacity>
                 </View>
 
                 <Text style={dynamicStyles.sectionLabel}>PREFERENCES</Text>

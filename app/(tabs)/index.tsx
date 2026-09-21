@@ -6,9 +6,10 @@ import { useTheme } from "@/context/ThemeContext";
 import { api } from "@/service/api";
 import { moodToExpression } from "@/service/mood";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Image,
   ScrollView,
@@ -41,17 +42,21 @@ export default function Home() {
     setPrompt(dailyPrompt[Math.floor(Math.random() * dailyPrompt.length)]);
   }, []);
 
-  useEffect(() => {
-    if (appMode !== "api") return;
-    api.todo
-      .getAll()
-      .then((data: any) => {
-        const pending = (data?.todos ?? []).filter((t: any) => t.status === "pending");
-        setPendingCount(pending.length);
-        setTopTask(pending[0] ?? null);
-      })
-      .catch(() => {});
-  }, [appMode]);
+  // Refetch on every focus, not just once on mount — otherwise the pending-task
+  // count goes stale the moment you leave Home and come back after journaling.
+  useFocusEffect(
+    useCallback(() => {
+      if (appMode !== "api") return;
+      api.todo
+        .getAll()
+        .then((data: any) => {
+          const pending = (data?.todos ?? []).filter((t: any) => t.status === "pending");
+          setPendingCount(pending.length);
+          setTopTask(pending[0] ?? null);
+        })
+        .catch(() => {});
+    }, [appMode])
+  );
 
   const echoMessage =
     entries[0]?.comment ||

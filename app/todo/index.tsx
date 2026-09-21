@@ -1,9 +1,11 @@
 import { useStorage } from '@/context/StorageContext';
+import { useTheme } from '@/context/ThemeContext';
 import { api } from '@/service/api';
 import { scheduleTodoDailyReminder } from '@/service/NotificationService';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -29,12 +31,13 @@ type TodoItem = {
 export default function TodoList() {
     const router = useRouter();
     const { appMode } = useStorage();
+    const { colors } = useTheme();
     const [todos, setTodos] = useState<TodoItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'pending' | 'completed' | 'all'>('pending');
 
-    const fetchTodos = async () => {
+    const fetchTodos = useCallback(async () => {
         if (appMode !== 'api') {
             setLoading(false);
             return;
@@ -52,11 +55,15 @@ export default function TodoList() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [appMode]);
 
-    useEffect(() => {
-        fetchTodos();
-    }, []);
+    // Refetch every time this screen regains focus — not just on first mount —
+    // so todos the AI just extracted from a new entry actually show up.
+    useFocusEffect(
+        useCallback(() => {
+            fetchTodos();
+        }, [fetchTodos])
+    );
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -110,7 +117,7 @@ export default function TodoList() {
     });
 
     const renderItem = ({ item }: { item: TodoItem }) => (
-        <View style={styles.todoCard}>
+        <View style={[styles.todoCard, { backgroundColor: colors.surface }]}>
             <TouchableOpacity
                 style={styles.todoContent}
                 onPress={() => toggleTodo(item._id, item.status)}
@@ -118,20 +125,22 @@ export default function TodoList() {
             >
                 <View style={[
                     styles.checkbox,
-                    item.status === 'completed' && styles.checkboxChecked
+                    { borderColor: colors.border },
+                    item.status === 'completed' && { backgroundColor: colors.primary, borderColor: colors.primary },
                 ]}>
                     {item.status === 'completed' && <Ionicons name="checkmark" size={14} color="#fff" />}
                 </View>
                 <View style={styles.textContainer}>
                     <Text style={[
                         styles.todoText,
-                        item.status === 'completed' && styles.todoTextDone
+                        { color: colors.text },
+                        item.status === 'completed' && { textDecorationLine: 'line-through', color: colors.textSecondary },
                     ]}>
                         {item.todo}
                     </Text>
                     {item.type && (
-                        <View style={styles.typeBadge}>
-                            <Text style={styles.typeText}>{item.type}</Text>
+                        <View style={[styles.typeBadge, { backgroundColor: colors.surfaceSecondary }]}>
+                            <Text style={[styles.typeText, { color: colors.primary }]}>{item.type}</Text>
                         </View>
                     )}
                 </View>
@@ -147,12 +156,12 @@ export default function TodoList() {
     );
 
     return (
-        <SafeAreaView style={styles.safe}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <Ionicons name="chevron-back" size={24} color="#1A1D2E" />
+        <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+            <View style={[styles.header, { backgroundColor: colors.surface }]}>
+                <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: colors.surfaceSecondary }]}>
+                    <Ionicons name="chevron-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Tasks</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Tasks</Text>
                 <View style={{ width: 40 }} />
             </View>
 
@@ -160,10 +169,18 @@ export default function TodoList() {
                 {(['pending', 'completed', 'all'] as const).map((tab) => (
                     <TouchableOpacity
                         key={tab}
-                        style={[styles.tab, activeTab === tab && styles.activeTab]}
+                        style={[
+                            styles.tab,
+                            { backgroundColor: colors.surface, borderColor: colors.border },
+                            activeTab === tab && { backgroundColor: colors.primary, borderColor: colors.primary },
+                        ]}
                         onPress={() => setActiveTab(tab)}
                     >
-                        <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+                        <Text style={[
+                            styles.tabText,
+                            { color: colors.textSecondary },
+                            activeTab === tab && { color: '#fff' },
+                        ]}>
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}
                         </Text>
                     </TouchableOpacity>
@@ -172,7 +189,7 @@ export default function TodoList() {
 
             {loading ? (
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#4F6BFF" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : filteredTodos.length > 0 ? (
                 <FlatList
@@ -181,16 +198,16 @@ export default function TodoList() {
                     keyExtractor={item => item._id}
                     contentContainerStyle={styles.listContent}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F6BFF']} />
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />
                     }
                 />
             ) : (
                 <View style={styles.center}>
-                    <View style={styles.emptyIconBg}>
-                        <MaterialCommunityIcons name="clipboard-check-outline" size={48} color="#B0BAD0" />
+                    <View style={[styles.emptyIconBg, { backgroundColor: colors.surface }]}>
+                        <MaterialCommunityIcons name="clipboard-check-outline" size={48} color={colors.textSecondary} />
                     </View>
-                    <Text style={styles.emptyTitle}>No tasks found</Text>
-                    <Text style={styles.emptySub}>
+                    <Text style={[styles.emptyTitle, { color: colors.text }]}>No tasks found</Text>
+                    <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
                         {activeTab === 'pending'
                             ? "You're all caught up! AI extracts tasks from your journals."
                             : "Your completed tasks will appear here."}
@@ -202,14 +219,13 @@ export default function TodoList() {
 }
 
 const styles = StyleSheet.create({
-    safe: { flex: 1, backgroundColor: '#F5F6FA' },
+    safe: { flex: 1 },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: '#fff',
     },
     backBtn: {
         width: 40,
@@ -217,9 +233,8 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F5F6FA',
     },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: '#1A1D2E' },
+    headerTitle: { fontSize: 20, fontWeight: '800' },
 
     tabContainer: {
         flexDirection: 'row',
@@ -231,20 +246,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: '#fff',
         borderWidth: 1,
-        borderColor: '#E5E8F0',
     },
-    activeTab: {
-        backgroundColor: '#4F6BFF',
-        borderColor: '#4F6BFF',
-    },
-    tabText: { fontSize: 13, fontWeight: '700', color: '#7A8499' },
-    activeTabText: { color: '#fff' },
+    tabText: { fontSize: 13, fontWeight: '700' },
 
     listContent: { padding: 16, paddingBottom: 40 },
     todoCard: {
-        backgroundColor: '#fff',
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
@@ -261,26 +268,19 @@ const styles = StyleSheet.create({
         height: 22,
         borderRadius: 6,
         borderWidth: 2,
-        borderColor: '#E5E8F0',
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 2,
     },
-    checkboxChecked: {
-        backgroundColor: '#4F6BFF',
-        borderColor: '#4F6BFF',
-    },
     textContainer: { flex: 1, gap: 4 },
-    todoText: { fontSize: 15, color: '#1A1D2E', fontWeight: '600', lineHeight: 22 },
-    todoTextDone: { textDecorationLine: 'line-through', color: '#B0BAD0' },
+    todoText: { fontSize: 15, fontWeight: '600', lineHeight: 22 },
     typeBadge: {
         alignSelf: 'flex-start',
-        backgroundColor: '#EEF1FF',
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 6,
     },
-    typeText: { fontSize: 10, fontWeight: '700', color: '#4F6BFF', textTransform: 'uppercase' },
+    typeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
     deleteBtn: {
         padding: 8,
         marginLeft: 8,
@@ -291,7 +291,6 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: '#fff',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
@@ -299,6 +298,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 10,
     },
-    emptyTitle: { fontSize: 18, fontWeight: '800', color: '#1A1D2E', marginBottom: 8 },
-    emptySub: { fontSize: 14, color: '#7A8499', textAlign: 'center', lineHeight: 20 },
+    emptyTitle: { fontSize: 18, fontWeight: '800', marginBottom: 8 },
+    emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });

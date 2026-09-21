@@ -26,7 +26,7 @@ interface StorageContextType {
     addEntry: (entry: Omit<Entry, 'id' | 'createdAt'>) => Promise<(Entry & { streakData?: StreakData }) | void>;
     deleteEntry: (id: string) => Promise<void>;
     updateEntry: (id: string, updates: Partial<Entry>) => Promise<void>;
-    updateUser: (user: Partial<User>) => Promise<void>;
+    updateUser: (user: Partial<User> & { currentPassword?: string; newPassword?: string }) => Promise<void>;
     resetData: () => Promise<void>;
     toggleMode: (mode: AppMode) => Promise<void>;
     userName: string;
@@ -208,12 +208,14 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
 
-    const updateUser = async (updatedUser: Partial<User>) => {
+    const updateUser = async (updatedUser: Partial<User> & { currentPassword?: string; newPassword?: string }) => {
         if (appMode === 'api') {
             const result = await api.profile.update(updatedUser);
             setUser({ ...user, ...result.user });
         } else {
-            const newUser = { ...user, ...updatedUser };
+            // Local mode has no password concept — never persist these fields.
+            const { currentPassword, newPassword, ...rest } = updatedUser;
+            const newUser = { ...user, ...rest };
             setUser(newUser);
             await saveDataLocal('user', newUser);
         }

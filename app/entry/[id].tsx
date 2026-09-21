@@ -101,10 +101,15 @@ export default function EntryDetail() {
     const gradient = MOOD_GRADIENT[expression][isDark ? 'dark' : 'light'];
     const textOnGradient = isDark ? '#F8FAFC' : '#1F2937';
 
+    // Only split off a "title" when the entry actually has a line break —
+    // most entries are one flowing paragraph, and a title derived from
+    // slicing a single-line entry just repeats the same text as the body.
     const content = typeof entry.content === 'string' ? entry.content : '';
-    const firstLine = content.split('\n')[0] || '';
-    const title = firstLine.length > 60 ? firstLine.slice(0, 60) + '…' : firstLine;
-    const body = content.slice(firstLine.length).trim() || content;
+    const lines = content.split('\n');
+    const hasTitleLine = lines.length > 1 && lines[0].trim().length > 0;
+    const rawFirstLine = lines[0] ?? '';
+    const title = hasTitleLine ? (rawFirstLine.length > 60 ? rawFirstLine.slice(0, 60) + '…' : rawFirstLine) : '';
+    const body = hasTitleLine ? lines.slice(1).join('\n').trim() : content;
 
     const entryId = entry._id || entry.id || '';
 
