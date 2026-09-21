@@ -36,7 +36,7 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
     const date = new Date(entry.createdAt);
     const theme = getTheme(id);
 
-    const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dateStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const title = typeof entry.content === 'string' && entry.content.length > 0
         ? entry.content.split('\n')[0].substring(0, 45) + (entry.content.split('\n')[0].length > 45 ? '…' : '')
@@ -53,8 +53,6 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
         router.push({ pathname: '/(tabs)/create', params: { entryId: id } });
     };
 
-    const adjustedBg = isDark ? theme.bg + '40' : theme.bg;
-
     return (
         <TouchableOpacity activeOpacity={0.9} onPress={handleEdit} className="rounded-[20px] flex-row overflow-hidden" style={{ backgroundColor: colors.surface }}>
             <View className="w-1" style={{ backgroundColor: theme.color }} />
@@ -62,9 +60,12 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
                 <View className="flex-row justify-between items-center mb-2.5">
                     <Text className="text-[12px] font-medium" style={{ color: colors.textSecondary }}>{dateStr}</Text>
                     {entry.mood ? (
-                        <View className="flex-row items-center rounded-full px-2.5 py-1 gap-1.5" style={{ backgroundColor: adjustedBg }}>
-                            <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: theme.color }} />
-                            <Text className="text-[11px] font-bold" style={{ color: theme.color }}>
+                        <View
+                            className="flex-row items-center rounded-full px-2.5 py-1 gap-1.5"
+                            style={{ backgroundColor: isDark ? theme.color + 'D9' : theme.bg }}
+                        >
+                            <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isDark ? '#fff' : theme.color }} />
+                            <Text className="text-[11px] font-bold" style={{ color: isDark ? '#fff' : theme.color }}>
                                 {entry.score != null ? `${entry.score} ` : ''}{entry.mood}
                             </Text>
                         </View>
@@ -72,12 +73,12 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
                 </View>
                 <Text className="text-[19px] font-extrabold leading-[25px] mb-2.5" style={{ color: colors.text }} numberOfLines={2}>{title}</Text>
                 {entry.comment ? (
-                    <View className="rounded-2xl p-2.5 mb-3" style={{ borderLeftWidth: 3, borderLeftColor: theme.color, backgroundColor: adjustedBg }}>
-                        <View className="flex-row items-center gap-1.5 mb-1">
-                            <Ionicons name="sparkles" size={13} color={theme.color} />
-                            <Text className="text-[10px] font-extrabold tracking-wider" style={{ color: theme.color }}>AI INSIGHT</Text>
+                    <View className="rounded-xl px-2.5 py-2 mb-3" style={{ borderWidth: 1, borderColor: theme.color + '35', backgroundColor: colors.surface }}>
+                        <View className="flex-row items-center gap-1 mb-0.5">
+                            <Ionicons name="sparkles" size={11} color={theme.color} />
+                            <Text className="text-[10px] font-bold" style={{ color: theme.color }}>Insight</Text>
                         </View>
-                        <Text className="text-[13px] leading-[19px]" style={{ color: colors.textSecondary }} numberOfLines={2}>{entry.comment}</Text>
+                        <Text className="text-[12px] leading-[16px]" style={{ color: colors.text }} numberOfLines={2}>{entry.comment}</Text>
                     </View>
                 ) : entry.content ? (
                     <Text className="text-[16px] leading-[22px] mb-2.5" style={{ color: colors.textSecondary }} numberOfLines={2}>

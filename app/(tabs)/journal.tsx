@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -13,6 +13,18 @@ function normalizeMood(raw: string): string {
   // "Happy 😊" → "Happy", "happy" → "Happy"
   const base = raw.trim().split(/\s/)[0];
   return base.charAt(0).toUpperCase() + base.slice(1).toLowerCase();
+}
+
+// stoic.-style date grouping — "Today" / "Yesterday" / "September 5" — so each
+// card only needs to show its time, not the full date repeated on every row.
+function dayLabel(ts: number | string): string {
+  const d = new Date(ts);
+  const now = new Date();
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return d.toLocaleDateString([], { month: 'long', day: 'numeric' });
 }
 
 export default function Journal() {
@@ -50,6 +62,16 @@ export default function Journal() {
 
   const resultCount = filteredEntries.length;
   const isFiltered = selectedFilter !== 'All' || search.length > 0;
+
+  const sections = useMemo(() => {
+    const map = new Map<string, typeof filteredEntries>();
+    filteredEntries.forEach((e) => {
+      const label = dayLabel(e.createdAt);
+      if (!map.has(label)) map.set(label, []);
+      map.get(label)!.push(e);
+    });
+    return Array.from(map.entries()).map(([title, data]) => ({ title, data }));
+  }, [filteredEntries]);
 
   return (
     <View style={styles.root}>
@@ -102,15 +124,19 @@ export default function Journal() {
           }}
         />
 
-        {/* Entry list */}
-        <FlatList
-          data={filteredEntries}
+        {/* Entry list, grouped by day */}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item._id || item.id || String(Math.random())}
           renderItem={({ item }) => (
             <View style={styles.entryWrap}>
               <EntryCard entry={item} />
             </View>
           )}
+          renderSectionHeader={({ section: { title } }) => (
+            <Text style={[styles.sectionHeader, { color: colors.text }]}>{title}</Text>
+          )}
+          stickySectionHeadersEnabled={false}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (
@@ -160,6 +186,7 @@ const styles = StyleSheet.create({
   searchBar:   { flexDirection: 'row', alignItems: 'center', borderRadius: 24, paddingHorizontal: 14, paddingVertical: 10, gap: 8, borderWidth: 1.5 },
   searchInput: { flex: 1, fontSize: 14 },
   entryWrap:   { paddingHorizontal: 16, marginBottom: 12 },
+  sectionHeader: { fontSize: 15, fontWeight: '800', marginHorizontal: 16, marginTop: 14, marginBottom: 8 },
   listContent: { paddingBottom: 24, paddingTop: 4 },
   empty:       { alignItems: 'center', paddingTop: 64, paddingHorizontal: 32 },
   emptyIcon:   { fontSize: 52, marginBottom: 16 },
