@@ -2,6 +2,7 @@ import JournalEntryBox from '@/component/JournalEntryBox';
 import { useGamification } from '@/context/GamificationContext';
 import { useStorage } from '@/context/StorageContext';
 import { logger } from '@/service/logger';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -31,6 +32,7 @@ export default function Create() {
     const [showMoodModal, setShowMoodModal] = useState(false);
     const [pendingEntryContent, setPendingEntryContent] = useState<string>('');
     const [initialContent, setInitialContent] = useState('');
+    const [existingInsight, setExistingInsight] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [showResultModal, setShowResultModal] = useState(false);
     const [resultData, setResultData] = useState<{ comment: string; xp: number; streak: number; milestone?: string | null } | null>(null);
@@ -49,6 +51,7 @@ export default function Create() {
             const entry = entries.find(e => (e.id === entryId || e._id === entryId));
             if (entry) {
                 setInitialContent(typeof entry.content === 'string' ? entry.content : '');
+                setExistingInsight(entry.comment || '');
             }
         }
     }, [entryId, entries]);
@@ -189,11 +192,24 @@ export default function Create() {
                 </View>
             )}
 
+            {/* Echo's insight for this entry, if it has one */}
+            {entryId && existingInsight ? (
+                <View style={s.insightWrap}>
+                    <View style={[s.insightCard, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '35' }]}>
+                        <View style={s.insightHeader}>
+                            <Ionicons name="sparkles" size={13} color={colors.primary} />
+                            <Text style={[s.insightLabel, { color: colors.primary }]}>Echo's Insight</Text>
+                        </View>
+                        <Text style={[s.insightText, { color: colors.text }]}>{existingInsight}</Text>
+                    </View>
+                </View>
+            ) : null}
+
             <JournalEntryBox
                 onSubmit={handleSubmit}
                 initialContent={initialContent}
                 actionLabel={entryId ? "Update" : "Save"}
-                onGetPrompt={handleGetPrompt}
+                onGetPrompt={entryId ? undefined : handleGetPrompt}
                 onVoiceRecord={handleVoiceRecord}
                 onAttachImage={handleAttachImage}
                 onScanHandwriting={handleScanHandwriting}
@@ -274,6 +290,12 @@ const s = StyleSheet.create({
     rewardPreview: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 16 },
     rewardText: { fontSize: 13, fontWeight: '700', color: '#F59E0B' },
     riskText: { fontSize: 13, fontWeight: '700', color: '#EF4444' },
+
+    insightWrap: { paddingHorizontal: 16, paddingTop: 12 },
+    insightCard: { borderRadius: 16, borderWidth: 1, padding: 14, gap: 6 },
+    insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    insightLabel: { fontSize: 12, fontWeight: '800' },
+    insightText: { fontSize: 14, lineHeight: 20 },
 
     modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
     modalCard: { margin: 20, padding: 24, borderRadius: 24, width: '90%', alignItems: 'center' },

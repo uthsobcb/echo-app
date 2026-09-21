@@ -54,46 +54,55 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
     };
 
     return (
-        <TouchableOpacity activeOpacity={0.9} onPress={handleEdit} className="rounded-[20px] flex-row overflow-hidden" style={{ backgroundColor: colors.surface }}>
-            <View className="w-1" style={{ backgroundColor: theme.color }} />
-            <View className="flex-1 p-4">
-                <View className="flex-row justify-between items-center mb-2.5">
-                    <Text className="text-[12px] font-medium" style={{ color: colors.textSecondary }}>{dateStr}</Text>
-                    {entry.mood ? (
-                        <View
-                            className="flex-row items-center rounded-full px-2.5 py-1 gap-1.5"
-                            style={{ backgroundColor: isDark ? theme.color + 'D9' : theme.bg }}
-                        >
-                            <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isDark ? '#fff' : theme.color }} />
-                            <Text className="text-[11px] font-bold" style={{ color: isDark ? '#fff' : theme.color }}>
-                                {entry.score != null ? `${entry.score} ` : ''}{entry.mood}
-                            </Text>
-                        </View>
-                    ) : null}
-                </View>
-                <Text className="text-[19px] font-extrabold leading-[25px] mb-2.5" style={{ color: colors.text }} numberOfLines={2}>{title}</Text>
-                {entry.comment ? (
-                    <View className="rounded-xl px-2.5 py-2 mb-3" style={{ borderWidth: 1, borderColor: theme.color + '35', backgroundColor: colors.surface }}>
-                        <View className="flex-row items-center gap-1 mb-0.5">
-                            <Ionicons name="sparkles" size={11} color={theme.color} />
-                            <Text className="text-[10px] font-bold" style={{ color: theme.color }}>Insight</Text>
-                        </View>
-                        <Text className="text-[12px] leading-[16px]" style={{ color: colors.text }} numberOfLines={2}>{entry.comment}</Text>
-                    </View>
-                ) : entry.content ? (
-                    <Text className="text-[16px] leading-[22px] mb-2.5" style={{ color: colors.textSecondary }} numberOfLines={2}>
-                        {entry.content.replace(title.replace('…', ''), '').trim()}
+        <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={handleEdit}
+            className="rounded-[20px] p-4"
+            style={{
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                shadowColor: '#000',
+                shadowOpacity: isDark ? 0 : 0.06,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 4 },
+                elevation: isDark ? 0 : 2,
+            }}
+        >
+            {entry.mood ? (
+                <View
+                    className="flex-row items-center self-start rounded-full px-2.5 py-1 gap-1.5 mb-2.5"
+                    style={{ backgroundColor: isDark ? theme.color + 'D9' : theme.bg }}
+                >
+                    <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isDark ? '#fff' : theme.color }} />
+                    <Text className="text-[11px] font-bold" style={{ color: isDark ? '#fff' : theme.color }}>
+                        {entry.score != null ? `${entry.score} ` : ''}{entry.mood}
                     </Text>
-                ) : null}
-                <View className="flex-row justify-between items-center mt-1">
-                    <TouchableOpacity onPress={handleDelete} hitSlop={10} className="p-1">
-                        <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleEdit} className="flex-row items-center gap-0.5">
-                        <Text className="text-[13px] font-bold" style={{ color: theme.color }}>Read more</Text>
-                        <Ionicons name="chevron-forward" size={14} color={theme.color} />
-                    </TouchableOpacity>
                 </View>
+            ) : null}
+            <Text className="text-[19px] font-extrabold leading-[25px]" style={{ color: colors.text }} numberOfLines={2}>{title}</Text>
+            <Text className="text-[12px] font-medium mb-2.5" style={{ color: colors.textSecondary }}>{dateStr}</Text>
+            {entry.comment ? (
+                <View
+                    className="flex-row items-center self-start rounded-full px-2 py-1 gap-1 mb-3"
+                    style={{ backgroundColor: theme.color + '15', borderWidth: 1, borderColor: theme.color + '35' }}
+                >
+                    <Ionicons name="sparkles" size={10} color={theme.color} />
+                    <Text className="text-[10px] font-bold" style={{ color: theme.color }}>AI Insight</Text>
+                </View>
+            ) : entry.content ? (
+                <Text className="text-[16px] leading-[22px] mb-2.5" style={{ color: colors.textSecondary }} numberOfLines={2}>
+                    {entry.content.replace(title.replace('…', ''), '').trim()}
+                </Text>
+            ) : null}
+            <View className="flex-row justify-between items-center mt-1">
+                <TouchableOpacity onPress={handleDelete} hitSlop={10} className="p-1">
+                    <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleEdit} className="flex-row items-center gap-0.5">
+                    <Text className="text-[13px] font-bold" style={{ color: theme.color }}>Read more</Text>
+                    <Ionicons name="chevron-forward" size={14} color={theme.color} />
+                </TouchableOpacity>
             </View>
         </TouchableOpacity>
     );
