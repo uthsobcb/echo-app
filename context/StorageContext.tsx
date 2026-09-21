@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api, loadServerUrl } from '../service/api';
 import { logger } from '../service/logger';
 import { setupNotifications } from '../service/NotificationService';
+import { tokenStorage } from '../service/tokenStorage';
 import { Entry, MoodCreateResponse, Stats, StreakData, User } from '../types/data';
 
 type AppMode = 'local' | 'api';
@@ -119,7 +120,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const loadData = async (mode: AppMode) => {
         try {
             if (mode === 'api') {
-                const token = await AsyncStorage.getItem('token');
+                const token = await tokenStorage.get();
                 if (token) {
                     setIsAuthenticated(true);
 
@@ -234,7 +235,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const result = await api.auth.login(credentials);
             logger.debug('Context: login result received');
             if (result.token) {
-                await AsyncStorage.setItem('token', result.token);
+                await tokenStorage.set(result.token);
                 setAppMode('api');
                 setIsAuthenticated(true);
                 await AsyncStorage.setItem('appMode', 'api');
@@ -265,7 +266,7 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         setIsAuthenticated(false);
         await AsyncStorage.removeItem('isAuthenticated');
-        await AsyncStorage.removeItem('token');
+        await tokenStorage.remove();
         await AsyncStorage.removeItem(USERNAME_KEY);
         await AsyncStorage.removeItem(ONBOARDING_GOALS_KEY);
         await AsyncStorage.removeItem(ONBOARDING_KEY);

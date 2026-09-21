@@ -7,10 +7,9 @@ import { SpaceDrawStatus, SpaceLeaderboardEntry, SpaceMessage } from '@/types/da
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Animated,
     Image,
     KeyboardAvoidingView,
     Platform,
@@ -21,6 +20,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const MIN_MESSAGE_LENGTH = 5;
@@ -52,7 +52,11 @@ export default function SpacePage() {
     const [leaderboard, setLeaderboard] = useState<SpaceLeaderboardEntry[]>([]);
     const [leaderboardLoading, setLeaderboardLoading] = useState(true);
 
-    const revealAnim = useRef(new Animated.Value(0)).current;
+    const revealAnim = useSharedValue(0);
+    const revealStyle = useAnimatedStyle(() => ({
+        opacity: revealAnim.get(),
+        transform: [{ scale: interpolate(revealAnim.get(), [0, 1], [0.9, 1], Extrapolation.CLAMP) }],
+    }));
 
     const fetchStatus = useCallback(async () => {
         try {
@@ -92,8 +96,8 @@ export default function SpacePage() {
             await api.space.recordDraw();
             const msg = await api.space.getMessage();
             setDrawnMessage(msg);
-            revealAnim.setValue(0);
-            Animated.spring(revealAnim, { toValue: 1, friction: 7, tension: 60, useNativeDriver: true }).start();
+            revealAnim.set(0);
+            revealAnim.set(withSpring(1, { duration: 400, dampingRatio: 1 }));
         } catch (e: any) {
             Toast.error(e?.message || 'Could not draw right now');
         } finally {
@@ -165,14 +169,7 @@ export default function SpacePage() {
 
                     {/* ── Drawn message reveal ─────────────────────────── */}
                     {drawnMessage !== undefined && (
-                        <Animated.View
-                            style={{
-                                opacity: revealAnim,
-                                transform: [
-                                    { scale: revealAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
-                                ],
-                            }}
-                        >
+                        <Animated.View style={revealStyle}>
                             <LinearGradient
                                 colors={isDark ? ['#1C1060', '#0F0C35'] : ['#A855F7', '#7B3FE4']}
                                 start={{ x: 0, y: 0 }}

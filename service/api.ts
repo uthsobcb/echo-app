@@ -18,6 +18,7 @@ import {
 import { config } from './config';
 import { logger } from './logger';
 import { normalizeServerUrl } from './serverUrl';
+import { tokenStorage } from './tokenStorage';
 
 // ponytail: mutable module-level base URL — every `${BASE_URL}` below is read at
 // call time, so pointing the app at a self-hosted server needs no other plumbing.
@@ -46,7 +47,7 @@ export async function setServerUrl(input: string | null) {
         await AsyncStorage.removeItem(SERVER_URL_KEY);
     }
     // A token from another server is worthless and must not be sent to this one.
-    if (BASE_URL !== previous) await AsyncStorage.removeItem('token');
+    if (BASE_URL !== previous) await tokenStorage.remove();
     return BASE_URL;
 }
 
@@ -61,7 +62,7 @@ export async function checkServer(apiBase: string) {
 
 async function getHeaders(isMultipart = false) {
     try {
-        const token = await AsyncStorage.getItem('token');
+        const token = await tokenStorage.get();
         const headers: Record<string, string> = {
             'Accept': 'application/json',
         };
@@ -125,7 +126,7 @@ export const api = {
                 });
                 const data = await handleResponse(response);
                 if (data.token) {
-                    await AsyncStorage.setItem('token', data.token);
+                    await tokenStorage.set(data.token);
                 }
                 return data as AuthResponse;
             } catch (e) {

@@ -7,7 +7,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { cubicBezier, FadeIn, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+// Module scope — a fresh key per question makes Reanimated treat it as a
+// mount/unmount, so entering/exiting fire automatically on qIndex change.
+const Q_ENTER = FadeIn.duration(200);
+const Q_EXIT = FadeOut.duration(120);
+const EASE_OUT = cubicBezier(0.23, 1, 0.32, 1);
 
 const INSTRUMENTS: Record<ScreeningType, { title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap; questions: string[] }> = {
     phq9: {
@@ -170,7 +177,7 @@ export default function ScreeningPage() {
 
             {screen === 'form' && (
                 <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
-                    <View
+                    <Animated.View
                         style={[
                             styles.progressFill,
                             { backgroundColor: colors.primary, width: `${((qIndex + 1) / totalQuestions) * 100}%` },
@@ -253,32 +260,34 @@ export default function ScreeningPage() {
                         <Text style={[styles.formIntro, { color: colors.textSecondary }]}>
                             Over the last 2 weeks, how often have you been bothered by:
                         </Text>
-                        <Text style={[styles.questionBig, { color: colors.text }]}>{questions[qIndex]}</Text>
+                        <Animated.View key={qIndex} entering={Q_ENTER} exiting={Q_EXIT}>
+                            <Text style={[styles.questionBig, { color: colors.text }]}>{questions[qIndex]}</Text>
 
-                        <View style={styles.answerList}>
-                            {ANSWER_OPTIONS.map(opt => {
-                                const selected = currentAnswer === opt.value;
-                                return (
-                                    <TouchableOpacity
-                                        key={opt.value}
-                                        style={[
-                                            styles.answerRow,
-                                            { backgroundColor: colors.surface, borderColor: colors.border },
-                                            selected && { borderColor: colors.primary, backgroundColor: colors.primary + '14' },
-                                        ]}
-                                        onPress={() => setAnswers(prev => prev.map((a, i) => i === qIndex ? opt.value : a))}
-                                        activeOpacity={0.7}
-                                    >
-                                        <View style={[styles.radioOuter, { borderColor: selected ? colors.primary : colors.border }]}>
-                                            {selected && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
-                                        </View>
-                                        <Text style={[styles.answerText, { color: selected ? colors.primary : colors.text }]}>
-                                            {opt.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
+                            <View style={styles.answerList}>
+                                {ANSWER_OPTIONS.map(opt => {
+                                    const selected = currentAnswer === opt.value;
+                                    return (
+                                        <TouchableOpacity
+                                            key={opt.value}
+                                            style={[
+                                                styles.answerRow,
+                                                { backgroundColor: colors.surface, borderColor: colors.border },
+                                                selected && { borderColor: colors.primary, backgroundColor: colors.primary + '14' },
+                                            ]}
+                                            onPress={() => setAnswers(prev => prev.map((a, i) => i === qIndex ? opt.value : a))}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={[styles.radioOuter, { borderColor: selected ? colors.primary : colors.border }]}>
+                                                {selected && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
+                                            </View>
+                                            <Text style={[styles.answerText, { color: selected ? colors.primary : colors.text }]}>
+                                                {opt.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </Animated.View>
                     </ScrollView>
 
                     <View style={styles.formFooter}>
@@ -349,7 +358,13 @@ const styles = StyleSheet.create({
     qCounter: { fontSize: 12, fontWeight: '700' },
 
     progressTrack: { height: 4, marginHorizontal: 20, borderRadius: 2, overflow: 'hidden' },
-    progressFill: { height: '100%', borderRadius: 2 },
+    progressFill: {
+        height: '100%',
+        borderRadius: 2,
+        transitionProperty: 'width',
+        transitionDuration: '250ms',
+        transitionTimingFunction: EASE_OUT,
+    } as any,
 
     scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
     disclaimer: { fontSize: 12, lineHeight: 18, marginBottom: 18 },

@@ -32,6 +32,7 @@
     "expo-linking": "~8.0.12",
     "expo-notifications": "~0.32.17",
     "expo-router": "~6.0.24",
+    "expo-secure-store": "~15.0.8",
     "expo-speech": "~14.0.8",
     "expo-speech-recognition": "^3.1.0",
     "expo-splash-screen": "~31.0.13",
@@ -60,5 +61,21 @@
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "react-native": {
+      "ws": "6.2.6"
+    },
+    "@react-native/dev-middleware": {
+      "ws": "6.2.6"
+    },
+    "metro": {
+      "ws": "7.5.13"
+    },
+    "react-devtools-core": {
+      "ws": "7.5.13",
+      "shell-quote": "1.10.0"
+    },
+    "undici": "6.28.1"
+  }
 }

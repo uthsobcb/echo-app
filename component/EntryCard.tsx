@@ -4,8 +4,37 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { Alert, Text, TouchableOpacity, View } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { Extrapolation, interpolate, SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { logger } from '@/service/logger';
 import { useTheme } from '../context/ThemeContext';
+
+const DELETE_ACTION_WIDTH = 76;
+
+// Swipe-to-reveal delete: occasional action (deleting an entry), so it earns a
+// real gesture rather than the near-imperceptible press feedback tier. The
+// inline trash icon stays too — swipe isn't always discovered on first use.
+function DeleteAction({ translation, onPress }: { translation: SharedValue<number>; onPress: () => void }) {
+    const style = useAnimatedStyle(() => ({
+        opacity: interpolate(translation.get(), [-DELETE_ACTION_WIDTH, 0], [1, 0], Extrapolation.CLAMP),
+        transform: [
+            { scale: interpolate(translation.get(), [-DELETE_ACTION_WIDTH, 0], [1, 0.7], Extrapolation.CLAMP) },
+        ],
+    }));
+    return (
+        <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.85}
+            style={{ width: DELETE_ACTION_WIDTH, marginLeft: 8, borderRadius: 20, overflow: 'hidden' }}
+        >
+            <View style={{ flex: 1, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center' }}>
+                <Animated.View style={style}>
+                    <Ionicons name="trash" size={20} color="#fff" />
+                </Animated.View>
+            </View>
+        </TouchableOpacity>
+    );
+}
 
 const THEMES = [
     { color: '#4F6BFF', bg: '#EEF1FF' },
@@ -49,14 +78,24 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
         ]);
     };
 
-    const handleEdit = () => {
-        router.push({ pathname: '/(tabs)/create', params: { entryId: id } });
+    const handleOpen = () => {
+        router.push({ pathname: '/entry/[id]', params: { id } });
     };
 
     return (
+        <Swipeable
+            renderRightActions={(_progress, translation, swipeable) => (
+                <DeleteAction
+                    translation={translation}
+                    onPress={() => { swipeable.close(); handleDelete(); }}
+                />
+            )}
+            rightThreshold={DELETE_ACTION_WIDTH / 2}
+            overshootRight={false}
+        >
         <TouchableOpacity
             activeOpacity={0.9}
-            onPress={handleEdit}
+            onPress={handleOpen}
             className="rounded-[20px] p-4"
             style={{
                 backgroundColor: colors.surface,
@@ -99,12 +138,13 @@ const EntryCard = ({ entry }: { entry?: Entry }) => {
                 <TouchableOpacity onPress={handleDelete} hitSlop={10} className="p-1">
                     <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleEdit} className="flex-row items-center gap-0.5">
+                <TouchableOpacity onPress={handleOpen} className="flex-row items-center gap-0.5">
                     <Text className="text-[13px] font-bold" style={{ color: theme.color }}>Read more</Text>
                     <Ionicons name="chevron-forward" size={14} color={theme.color} />
                 </TouchableOpacity>
             </View>
         </TouchableOpacity>
+        </Swipeable>
     );
 };
 

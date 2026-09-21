@@ -6,8 +6,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
+
+// Module scope — a layout-animation builder rebuilt every render can miss a
+// reflow that's already in flight. Closes the gap left by a swiped-away row.
+const ROW_REFLOW = LinearTransition.duration(200);
 
 function normalizeMood(raw: string): string {
   // "Happy 😊" → "Happy", "happy" → "Happy"
@@ -129,9 +134,9 @@ export default function Journal() {
           sections={sections}
           keyExtractor={(item) => item._id || item.id || String(Math.random())}
           renderItem={({ item }) => (
-            <View style={styles.entryWrap}>
+            <Animated.View layout={ROW_REFLOW} style={styles.entryWrap}>
               <EntryCard entry={item} />
-            </View>
+            </Animated.View>
           )}
           renderSectionHeader={({ section: { title } }) => (
             <Text style={[styles.sectionHeader, { color: colors.text }]}>{title}</Text>
